@@ -1,0 +1,166 @@
+\documentclass[a4paper]{article}
+
+\usepackage[paper=a4paper, left=1.5cm, right=1.5cm, bottom=1.5cm, top=3.5cm]{geometry}
+\usepackage[spanish,activeacute]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{alltt}
+\usepackage{graphicx} %Para incluir el logo de la UBA
+\usepackage{caratula} %Para armar el cuadro de integrantes
+\usepackage{multirow} %Para poder poner varias lineas juntas sin divisiones en una tabla
+\usepackage[lined,ruled,linesnumbered]{algorithm2e}
+\usepackage{algpseudocode}
+\usepackage{scrextend}
+\usepackage{blindtext}
+
+
+%Cosas para escribir codigo fuente
+%Fuente: http://en.wikibooks.org/wiki/LaTeX/Source_Code_Listings
+\usepackage{listings}
+\usepackage{color}
+
+\setcounter{secnumdepth}{5}
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{myorange}{rgb}{1,0.4,0.2}
+\definecolor{myblue}{rgb}{0,0,0.65}
+
+%Configuracion para los listings
+\lstset{ %
+  backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\small,        % the size of the fonts that are used for the code
+  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                 % sets automatic line breaking
+  captionpos=b,                    % sets the caption-position to bottom
+  commentstyle=\color{mygreen},    % comment style
+  deletekeywords={...},            % if you want to delete keywords from the given language
+  escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,                    % adds a frame around the code
+  keywordstyle=\color{myblue},       % keyword style
+  language=Octave,                 % the language of the code
+  morekeywords={*,...},            % if you want to add more keywords to the set
+  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                   % how far the line-numbers are from the code
+  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+  rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,          % underline spaces within strings only
+  showtabs=false,                  % show tabs within strings adding particular underscores
+  stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{myorange},     % string literal style
+  tabsize=2,                       % sets default tabsize to 2 spaces
+  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+\renewcommand{\lstlistingname}{C\'{o}digo}
+
+\lstset{language=C++,caption={Descriptive Caption Text},label=DescriptiveLabel}
+\setlength\parindent{0pt}
+
+%\topmargin = -1cm
+%\textheight = 24cm 
+
+\begin{document}
+
+
+\integrante{Sclar, Melanie}{551/12}{melaniesclar@gmail.com}
+\integrante{Zylber, Ariel}{530/12}{arielzylber@gmail.com}
+
+\def\Materia{Final de Organizaci\'on del Computador II}
+\def\Fecha{Alg\'un d\'ia}
+
+%----- CARATULA -----%
+
+\thispagestyle{empty}
+
+\begin{center}
+	\includegraphics[scale = 0.25]{logo_uba.jpg}
+\end{center}
+
+\vspace{5mm}
+
+\begin{center}
+	{\textbf{\large UNIVERSIDAD DE BUENOS AIRES}}\\[1.5em]
+	{\textbf{\large Departamento de Computaci\'{o}n}}\\[1.5em]
+    {\textbf{\large Facultad de Ciencias Exactas y Naturales}}\\
+    \vspace{35mm}
+    {\LARGE\textbf{\Materia}}\\[1em]    
+    \vspace{15mm}
+    {\Large \textbf{\Titulo}}\\[1em]
+    \vspace{15mm}
+    {\textbf{\Large \Fecha}}\\
+    \vspace{15mm}
+    \textbf{\tablaints}
+\end{center}
+
+\newtheorem{teo}{Teorema}[section]
+\newtheorem{propo}{Proposici\'{o}n}[section]
+\newtheorem{lema}{Lema}[section]
+\newtheorem{coro}{Corolario}[section]
+\newtheorem{defi}{Definici\'{o}n}[section]
+
+\newpage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+\pagestyle{plain}
+
+\newpage
+
+
+\newcommand{\Asig}{\ensuremath{\leftarrow}}
+\newcommand{\AndY}{\ensuremath{\wedge}}
+\newcommand{\Or}{\ensuremath{\vee}}
+\newcommand{\Not}{\ensuremath{\neg}}
+\newcommand{\NotEq}{\ensuremath{\neq}}
+\newcommand{\MayorIg}{\ensuremath{\geq}}
+\newcommand{\tabu}{\hspace*{0.7cm}}
+\newcommand{\ctabu}{\hspace*{0.8cm}}
+\newcommand{\htabu}{\hspace*{0.35cm}}
+\newcommand{\moduloNombre}[1]{\textbf{#1}}
+
+\section{Distribuci\'on de la temperatura}
+
+Partimos de la ecuación de Biocalor de Pennes, 
+$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$ \\
+
+Para nuestro modelo, hay varias constantes que suponemos conocidas, en los siguientes valores:
+
+$C_p= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 37^\circ C$ \\
+
+Además, si bien para implementar el modelo no supondremos nada sobre $k$, $\sigma$ y $\varphi$, a la hora de realizar los cálculos tomaremos los siguientes valores para las funciones,
+como fue indicado por Emmanuel. 
+
+$k(x,y)=0.565$ \\
+$\sigma(x,y)=0.75$ \\
+$\varphi(x,y)=1500 \ x \ e^{-(x-2)^2-(y-2)^2}$ \\
+
+Entonces, los únicos valores desconocidos para nosotros son los $T_n(i,j)$, es decir, el valor de la temperatura en el tiempo $n$ (ya discretizado) en cada lugar del espacio $(i,j)$.
+Utilizaremos las discretizaciones tal y como nos fueron indicadas: el término temporal por diferencias adelantadas, los términos espaciales por diferencias centradas. \\
+
+$\nabla \cdot (k \nabla T)$ es el Laplaciano, y lo calculamos a continuación. \\
+
+$\nabla \cdot (k \nabla T) = \nabla \cdot k (\frac{\partial T}{\partial x}, \frac{\partial T}{\partial y}, \frac{\partial T}{\partial t})$ \\
+$\nabla \cdot (k \nabla T) = \frac{\partial}{\partial x} (k \frac{\partial T}{\partial x}) + \frac{\partial}{\partial y} (k \frac{\partial T}{\partial y}) + \frac{\partial}{\partial t} (k \frac{\partial T}{\partial t}) = \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + k \cdot \frac{\partial^2 T}{\partial x^2} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial y^2} + \frac{\partial k}{\partial t} \cdot \frac{\partial T}{\partial t} + k \cdot \frac{\partial^2 T}{\partial t^2}$ \\
+$\nabla \cdot (k \nabla T) = \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + \frac{\partial k}{\partial t} \cdot \frac{\partial T}{\partial t} + k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} + k \cdot \frac{\partial^2 T}{\partial t^2}$ \\
+
+Notar que si $k$ es constante, $\frac{\partial k}{\partial x} = \frac{\partial k}{\partial y} = \frac{\partial k}{\partial t} = 0$ y por lo tanto, obtenemos $\nabla \cdot (k \nabla T) = k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} + k \cdot \frac{\partial^2 T}{\partial t^2}$ \\
+Sin embargo, a priori no sabemos que nuestro modelo de aplicación será con $k$ constante así que deberemos calcular sus derivadas. Mostramos cómo se calculan todas las derivadas respecto de $T$ con sus discretizaciones, y para $k$ será análogo.
+
+\bigskip
+$\frac{\partial T}{\partial x} \approx \frac{T_{n}(i+1,j) - T_n(i-1,j)}{\Delta x_i + \Delta x_{i+1}}$ \\
+$\frac{\partial T}{\partial y} \approx \frac{T_{n}(i,j+1) - T_n(i,j-1)}{\Delta y_j + \Delta y_{j+1}}$ \\
+$\frac{\partial T}{\partial t} \approx \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t_n}$ \\
+$\frac{\partial^2 T}{\partial x^2} \approx \frac{2 T_n(i+1,j)}{\Delta x_i (\Delta x_i + \Delta x_{i-1})} + \frac{2 T_n(i,j)}{\Delta x_i \Delta x_{i-1}} + \frac{2 T_n(i-1,j)}{\Delta x_{i-1} (\Delta x_i + \Delta x_{i-1})} $ \\
+$\frac{\partial^2 T}{\partial y^2} \approx \frac{2 T_n(i,j+1)}{\Delta y_j (\Delta y_j + \Delta y_{j-1})} + \frac{2 T_n(i,j)}{\Delta y_j \Delta y_{j-1}} + \frac{2 T_n(i,j-1)}{\Delta y_{j-1} (\Delta y_j + \Delta y_{j-1})} $ \\
+$\frac{\partial^2 T}{\partial t^2} \approx \frac{T_{n+2}(i,j) - 2 T_{n+1}(i,j) + T_n(i,j)}{(\Delta t)^2}$ \\
+
+Con todo esto, reemplazándolo en la ecuación original, nos debería quedar $T_{n+1}$ en función de $T_n$, pero no nos queda! Nos quedó un $T_{n+2}$...
+
+Supongamos que arreglamos eso, y nos queda como debería. Entonces lo resolvemos por Jacobi. En la propuesta dice \textit{Recomiendo usar un método fuertemente implícito combinado con jacobi}, qué significa exactamente eso?
+
+\end{document}
