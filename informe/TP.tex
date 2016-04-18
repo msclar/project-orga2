@@ -123,8 +123,17 @@
 \newcommand{\htabu}{\hspace*{0.35cm}}
 \newcommand{\moduloNombre}[1]{\textbf{#1}}
 
-\section{Distribuci\'on de la temperatura}
+\section{Objetivo del trabajo}
 
+El objetivo del trabajo es resolver la ecuación de Biocalor de Pennes utilizando el método de Jacobi para calcular la temperatura en cada sección de un tejido a cada instante de tiempo. Esto se enmarca dentro de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección de su modelo para identificar la temperatura y posición óptimas en las que aplicar un tratamiento para reducir los tumores cancerígenos. A grandes rasgos, el tratamiento consiste en colocar un ánodo y un cátodo en puntos específicos de la piel del paciente cercanos al tumor y variar su temperatura para lograr una reducción del tumor. Gráficamente,
+
+%% insertar dibujo de emmanuel
+
+Como la resolución de esta ecuación ocupa una parte no despreciable del cómputo de sus algoritmos completos, lo implementaremos en C plano, en ASM sin SIMD y con SIMD y compararemos los tiempos de ejecución obtenidos con cada una (compilando con gcc e icc). Creemos que utilizar SIMD podría ser muy provechoso en este problema, ya que muchas de las operaciones de matrices que efectuaremos son paralelizables y esperamos ver una significante reducción en el tiempo de ejecución del algoritmo.
+
+\section{Distribuci\'on de la temperatura: obtención del sistema a resolver}
+
+\subsection{Temperatura en todo el tejido salvo los bordes}
 Partimos de la ecuación de Biocalor de Pennes, 
 $\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$ \\
 
@@ -142,25 +151,85 @@ $\varphi(x,y)=1500 \ x \ e^{-(x-2)^2-(y-2)^2}$ \\
 Entonces, los únicos valores desconocidos para nosotros son los $T_n(i,j)$, es decir, el valor de la temperatura en el tiempo $n$ (ya discretizado) en cada lugar del espacio $(i,j)$.
 Utilizaremos las discretizaciones tal y como nos fueron indicadas: el término temporal por diferencias adelantadas, los términos espaciales por diferencias centradas. \\
 
-$\nabla \cdot (k \nabla T)$ es el Laplaciano, y lo calculamos a continuación. \\
-
-$\nabla \cdot (k \nabla T) = \nabla \cdot k (\frac{\partial T}{\partial x}, \frac{\partial T}{\partial y}, \frac{\partial T}{\partial t})$ \\
-$\nabla \cdot (k \nabla T) = \frac{\partial}{\partial x} (k \frac{\partial T}{\partial x}) + \frac{\partial}{\partial y} (k \frac{\partial T}{\partial y}) + \frac{\partial}{\partial t} (k \frac{\partial T}{\partial t}) = \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + k \cdot \frac{\partial^2 T}{\partial x^2} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial y^2} + \frac{\partial k}{\partial t} \cdot \frac{\partial T}{\partial t} + k \cdot \frac{\partial^2 T}{\partial t^2}$ \\
-$\nabla \cdot (k \nabla T) = \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + \frac{\partial k}{\partial t} \cdot \frac{\partial T}{\partial t} + k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} + k \cdot \frac{\partial^2 T}{\partial t^2}$ \\
+$\nabla \cdot (k \nabla T)$ es el Laplaciano, y lo calculamos a continuación.
+\begin{equation} \label{eq:nablaT}
+\begin{split}
+\nabla \cdot (k \nabla T) & = \nabla \cdot k \bigg(\frac{\partial T}{\partial x}, \frac{\partial T}{\partial y}\bigg) \\
+& = \frac{\partial}{\partial x} \bigg(k \frac{\partial T}{\partial x}\bigg) + \frac{\partial}{\partial y} \bigg(k \frac{\partial T}{\partial y}\bigg) \\
+& = \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + k \cdot \frac{\partial^2 T}{\partial x^2} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial y^2} \\
+ & = \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2}
+\end{split}
+\end{equation}
 
 Notar que si $k$ es constante, $\frac{\partial k}{\partial x} = \frac{\partial k}{\partial y} = \frac{\partial k}{\partial t} = 0$ y por lo tanto, obtenemos $\nabla \cdot (k \nabla T) = k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} + k \cdot \frac{\partial^2 T}{\partial t^2}$ \\
 Sin embargo, a priori no sabemos que nuestro modelo de aplicación será con $k$ constante así que deberemos calcular sus derivadas. Mostramos cómo se calculan todas las derivadas respecto de $T$ con sus discretizaciones, y para $k$ será análogo.
 
+\begin{equation*}
+\begin{split}
+\frac{\partial T}{\partial x} & \approx \frac{T_{n+1}(i+1,j) - T_{n+1}(i-1,j)}{\Delta x_i + \Delta x_{i+1}} \\
+\frac{\partial T}{\partial y} & \approx \frac{T_{n+1}(i,j+1) - T_{n+1}(i,j-1)}{\Delta y_j + \Delta y_{j+1}} \\
+\frac{\partial^2 T}{\partial x^2} & \approx \frac{2 T_{n+1}(i+1,j)}{\Delta x_i (\Delta x_i + \Delta x_{i-1})} - \frac{2 T_{n+1}(i,j)}{\Delta x_i \Delta x_{i-1}} + \frac{2 T_{n+1}(i-1,j)}{\Delta x_{i-1} (\Delta x_i + \Delta x_{i-1})} \\
+\frac{\partial^2 T}{\partial y^2} & \approx \frac{2 T_{n+1}(i,j+1)}{\Delta y_j (\Delta y_j + \Delta y_{j-1})} - \frac{2 T_{n+1}(i,j)}{\Delta y_j \Delta y_{j-1}} + \frac{2 T_{n+1}(i,j-1)}{\Delta y_{j-1} (\Delta y_j + \Delta y_{j-1})} \\
+\frac{\partial T}{\partial t} & \approx \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t_n}
+\end{split}
+\end{equation*}
+
+Como podemos asumir que $\Delta x_i = \Delta x_j = \Delta x$ y $\Delta y_i = \Delta y_j = \Delta y$ para todo $i$, $j$, las ecuaciones quedan así:
+\begin{equation} \label{eq:derivadas}
+\begin{split}
+\frac{\partial T}{\partial x} & \approx \frac{T_{n+1}(i+1,j) - T_{n+1}(i-1,j)}{2\Delta x}  \\
+\frac{\partial T}{\partial y} & \approx \frac{T_{n+1}(i,j+1) - T_{n+1}(i,j-1)}{2\Delta y} \\
+\frac{\partial^2 T}{\partial x^2} & \approx \frac{T_{n+1}(i+1,j)}{(\Delta x)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta x)^2} + \frac{T_{n+1}(i-1,j)}{(\Delta x)^2} \\
+\frac{\partial^2 T}{\partial y^2} & \approx \frac{T_{n+1}(i,j+1)}{(\Delta y)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta y)^2} + \frac{T_{n+1}(i,j-1)}{(\Delta y)^2} \\
+\frac{\partial T}{\partial t} & \approx \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t}
+\end{split}
+\end{equation}
+
+Aplicando todo esto a la ecuación del Biocalor de Pennes, despejamos los coeficientes de $T_n$ en función de los de $T_{n+1}$, para obtener un sistema de ecuaciones a resolver con Jacobi. Tomemos la ecuación del Biocalor de Pennes:
+$$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$$
+
+Reemplazando con lo obtenido en (\ref{eq:nablaT}),
+$$ \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$$
+
+Luego, aproximamos las derivadas como definimos en (\ref{eq:derivadas}):\\
+\begin{equation*}
+\begin{aligned}
+\rho \ C_p \ \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t} &= \frac{\partial k}{\partial x} \cdot \frac{T_{n+1}(i+1,j) - T_{n+1}(i-1,j)}{2\Delta x} \\ & \ \ \ \ \ \ \  + \frac{\partial k}{\partial y} \cdot \frac{T_{n+1}(i,j+1) - T_{n+1}(i,j-1)}{2\Delta y} \\ & \ \ \ \ \ \ \ + k \cdot \bigg(\frac{T_{n+1}(i+1,j)}{(\Delta x)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta x)^2} + \frac{T_{n+1}(i-1,j)}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \  + k \cdot \bigg(\frac{T_{n+1}(i,j+1)}{(\Delta y)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta y)^2} + \frac{T_{n+1}(i,j-1)}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  -  w_b C_b \rho_b (T_{n+1}(i,j)-T_a) + q''' + \sigma |\nabla \varphi|^2\\
+\end{aligned}
+\end{equation*}
+
 \bigskip
-$\frac{\partial T}{\partial x} \approx \frac{T_{n}(i+1,j) - T_n(i-1,j)}{\Delta x_i + \Delta x_{i+1}}$ \\
-$\frac{\partial T}{\partial y} \approx \frac{T_{n}(i,j+1) - T_n(i,j-1)}{\Delta y_j + \Delta y_{j+1}}$ \\
-$\frac{\partial T}{\partial t} \approx \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t_n}$ \\
-$\frac{\partial^2 T}{\partial x^2} \approx \frac{2 T_n(i+1,j)}{\Delta x_i (\Delta x_i + \Delta x_{i-1})} + \frac{2 T_n(i,j)}{\Delta x_i \Delta x_{i-1}} + \frac{2 T_n(i-1,j)}{\Delta x_{i-1} (\Delta x_i + \Delta x_{i-1})} $ \\
-$\frac{\partial^2 T}{\partial y^2} \approx \frac{2 T_n(i,j+1)}{\Delta y_j (\Delta y_j + \Delta y_{j-1})} + \frac{2 T_n(i,j)}{\Delta y_j \Delta y_{j-1}} + \frac{2 T_n(i,j-1)}{\Delta y_{j-1} (\Delta y_j + \Delta y_{j-1})} $ \\
-$\frac{\partial^2 T}{\partial t^2} \approx \frac{T_{n+2}(i,j) - 2 T_{n+1}(i,j) + T_n(i,j)}{(\Delta t)^2}$ \\
+Ahora sí, despejemos $T_n$ en función de los de $T_{n+1}$. Para abreviar, sea $TInd = w_b C_b \rho_b T_a + q''' + \sigma |\nabla \varphi|^2$. \\
 
-Con todo esto, reemplazándolo en la ecuación original, nos debería quedar $T_{n+1}$ en función de $T_n$, pero no nos queda! Nos quedó un $T_{n+2}$...
+\begin{equation*}
+\begin{aligned}
+- T_n(i,j) \frac{\rho \ C_p}{\Delta t} &= T_{n+1}(i+1,j) \cdot \bigg(\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} +  k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i-1,j) \cdot \bigg(-\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} + k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j) \cdot \bigg(-\frac{2k}{(\Delta x)^2} -\frac{2k}{(\Delta y)^2} + w_b C_b \rho_b - \rho \ C_p \ \frac{1}{\Delta t}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j+1) \cdot \bigg(\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  + T_{n+1}(i,j-1) \cdot \bigg(-\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg)
+\end{aligned}
+\end{equation*}
 
-Supongamos que arreglamos eso, y nos queda como debería. Entonces lo resolvemos por Jacobi. En la propuesta dice \textit{Recomiendo usar un método fuertemente implícito combinado con jacobi}, qué significa exactamente eso?
+Con estas ecuaciones nos quedará un sistema a resolver, pero antes de plantearlo debemos explicitar cuáles serán las condiciones de borde en este problema, ya que las ecuaciones antes dichas no valen en el borde exterior ni alrededor del ánodo y cátodo.
+
+\subsection{Temperatura en los bordes}
+En los bordes exteriores, el modelo propuesto asume que la temperatura en el borde será la misma que en el inmediato vecino interno. Más formalmente, asumiremos que:
+\begin{equation*}
+\begin{aligned}
+T_{n+1}(0,j) & = T_{n+1}(1,j) \\ 
+T_{n+1}(i,0) & = T_{n+1}(i,1) \\
+T_{n+1}(i,max_j) & = T_{n+1}(i,max_j-1) \\ 
+T_{n+1}(max_i,j) & = T_{n+1}(max_i-1,j)
+\end{aligned}
+\end{equation*}
+
+Además, en el borde de los electrodos (ánodo y cátodo) el cálculo de la temperatura es diferente. Los detalles de su cálculo se pueden ver en el Apéndice A. Siendo $(i,j)$ la aproximación del borde del electrodo,
+
+$$T_{n+1}(i,j) = \frac{r}{4(r-1)} \cdot \big( T_{n+1}(i+1,j) + T_{n+1}(i,j+1) + T_{n+1}(i-1,j) + T_{n+1}(i,j-1) - 4T_a \big)$$
+
+En nuestro trabajo, las posiciones de los electrodos serán parte del input del programa.
+
+\subsection{Planteo del sistema y resolución}
+
+Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = T_n + TInd$$, y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
+
+Notemos que la matriz $A$ es esparsa, y que sólo los vecinos de $(i,j)$ son no nulos.
 
 \end{document}
