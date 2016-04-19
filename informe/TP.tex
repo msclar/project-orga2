@@ -135,11 +135,11 @@ Como la resolución de esta ecuación ocupa una parte no despreciable del cómpu
 
 \subsection{Temperatura en todo el tejido salvo los bordes}
 Partimos de la ecuación de Biocalor de Pennes, 
-$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$ \\
+$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$ \\
 
 Para nuestro modelo, hay varias constantes que suponemos conocidas, en los siguientes valores:
 
-$C_p= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 37^\circ C$ \\
+$C_\rho= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 37^\circ C$ \\
 
 Además, si bien para implementar el modelo no supondremos nada sobre $k$, $\sigma$ y $\varphi$, a la hora de realizar los cálculos tomaremos los siguientes valores para las funciones,
 como fue indicado por Emmanuel. 
@@ -186,15 +186,15 @@ Como podemos asumir que $\Delta x_i = \Delta x_j = \Delta x$ y $\Delta y_i = \De
 \end{equation}
 
 Aplicando todo esto a la ecuación del Biocalor de Pennes, despejamos los coeficientes de $T_n$ en función de los de $T_{n+1}$, para obtener un sistema de ecuaciones a resolver con Jacobi. Tomemos la ecuación del Biocalor de Pennes:
-$$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$$
+$$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$$
 
 Reemplazando con lo obtenido en (\ref{eq:nablaT}),
-$$ \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_p \ \frac{\partial T}{\partial t}$$
+$$ \frac{\partial k}{\partial x} \cdot \frac{\partial T}{\partial x} + \frac{\partial k}{\partial y} \cdot \frac{\partial T}{\partial y} + k \cdot \frac{\partial^2 T}{\partial x^2} + k \cdot \frac{\partial^2 T}{\partial y^2} - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$$
 
 Luego, aproximamos las derivadas como definimos en (\ref{eq:derivadas}):\\
 \begin{equation*}
 \begin{aligned}
-\rho \ C_p \ \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t} &= \frac{\partial k}{\partial x} \cdot \frac{T_{n+1}(i+1,j) - T_{n+1}(i-1,j)}{2\Delta x} \\ & \ \ \ \ \ \ \  + \frac{\partial k}{\partial y} \cdot \frac{T_{n+1}(i,j+1) - T_{n+1}(i,j-1)}{2\Delta y} \\ & \ \ \ \ \ \ \ + k \cdot \bigg(\frac{T_{n+1}(i+1,j)}{(\Delta x)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta x)^2} + \frac{T_{n+1}(i-1,j)}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \  + k \cdot \bigg(\frac{T_{n+1}(i,j+1)}{(\Delta y)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta y)^2} + \frac{T_{n+1}(i,j-1)}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  -  w_b C_b \rho_b (T_{n+1}(i,j)-T_a) + q''' + \sigma |\nabla \varphi|^2\\
+\rho \ C_\rho \ \frac{T_{n+1}(i,j) - T_n(i,j)}{\Delta t} &= \frac{\partial k}{\partial x} \cdot \frac{T_{n+1}(i+1,j) - T_{n+1}(i-1,j)}{2\Delta x} \\ & \ \ \ \ \ \ \  + \frac{\partial k}{\partial y} \cdot \frac{T_{n+1}(i,j+1) - T_{n+1}(i,j-1)}{2\Delta y} \\ & \ \ \ \ \ \ \ + k \cdot \bigg(\frac{T_{n+1}(i+1,j)}{(\Delta x)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta x)^2} + \frac{T_{n+1}(i-1,j)}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \  + k \cdot \bigg(\frac{T_{n+1}(i,j+1)}{(\Delta y)^2} - \frac{2 T_{n+1}(i,j)}{(\Delta y)^2} + \frac{T_{n+1}(i,j-1)}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  -  w_b C_b \rho_b (T_{n+1}(i,j)-T_a) + q''' + \sigma |\nabla \varphi|^2\\
 \end{aligned}
 \end{equation*}
 
@@ -203,7 +203,7 @@ Ahora sí, despejemos $T_n$ en función de los de $T_{n+1}$. Para abreviar, sea 
 
 \begin{equation*}
 \begin{aligned}
-- T_n(i,j) \frac{\rho \ C_p}{\Delta t} &= T_{n+1}(i+1,j) \cdot \bigg(\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} +  k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i-1,j) \cdot \bigg(-\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} + k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j) \cdot \bigg(-\frac{2k}{(\Delta x)^2} -\frac{2k}{(\Delta y)^2} + w_b C_b \rho_b - \rho \ C_p \ \frac{1}{\Delta t}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j+1) \cdot \bigg(\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  + T_{n+1}(i,j-1) \cdot \bigg(-\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg)
+- T_n(i,j) \frac{\rho \ C_\rho}{\Delta t} - TInd(i,j) &= T_{n+1}(i+1,j) \cdot \bigg(\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} +  k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i-1,j) \cdot \bigg(-\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} + k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j) \cdot \bigg(-\frac{2k}{(\Delta x)^2} -\frac{2k}{(\Delta y)^2} + w_b C_b \rho_b - \rho \ C_\rho \ \frac{1}{\Delta t}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j+1) \cdot \bigg(\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  + T_{n+1}(i,j-1) \cdot \bigg(-\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg)
 \end{aligned}
 \end{equation*}
 
@@ -228,8 +228,8 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 
 \subsection{Planteo del sistema y resolución}
 
-Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = T_n + TInd$$, y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
+Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
 
-Notemos que la matriz $A$ es esparsa, y que sólo los vecinos de $(i,j)$ son no nulos.
+Notemos que la matriz $A$ es esparsa, y que sólo los vecinos de $(i,j)$ son no nulos. Con esto conseguiremos reducir mucho el tiempo de cómputo en todas las implementaciones.
 
 \end{document}
