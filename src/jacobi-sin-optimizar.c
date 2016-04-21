@@ -17,12 +17,23 @@ int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
 
-void print1D(double matrix[]) {
+void print1D(double matrix[], int cant_elems) {
 	int i;
-	for (i = 0; i < max_i * max_j; i++) {
+	for (i = 0; i < cant_elems; i++) {
 		printf("%f\n", matrix[i]);
 	}
 	printf("\n");
+}
+
+double normaVector(double matriz[], int cant_elems) {
+	double result = 0.0;
+	
+	int i;
+	for (i = 0; i < cant_elems; i++) {
+		result += matriz[i] * matriz[i];
+	}
+	// se puede evitar tomar raiz cuadrada si tomamos la convencion
+	return sqrt(result);
 }
 
 void jacobiStep(double Tn_sig[], 
@@ -46,6 +57,57 @@ void jacobiStep(double Tn_sig[],
 			Tn_sig[s] = (B[s] - sum) / A[s][s];
 		}
 	}
+}
+
+void jacobiStepOptimized(double Tn_sig[], 
+				double Tn[],
+				double B[],
+				double TInd[], 
+				double A[][max_i * max_j]) {
+	// X_i^(iter+1) = (b_i - sum (j != i) a_ij * X_j^iter	
+	
+	int i, j;
+	// los que tienen los 4 vecinos
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {
+			int s = indice(i, j, max_j);
+			
+			double sum = 0.0;
+			sum += A[s][indice(i-1, j, max_j)] * Tn[indice(i-1, j, max_j)];
+			sum += A[s][indice(i+1, j, max_j)] * Tn[indice(i+1, j, max_j)];
+			sum += A[s][indice(i, j-1, max_j)] * Tn[indice(i, j-1, max_j)];
+			sum += A[s][indice(i, j+1, max_j)] * Tn[indice(i, j+1, max_j)];
+			Tn_sig[s] = (B[s] - sum) / A[s][s];
+		}
+	}
+	
+	// los bordes exteriores
+	// TODO
+}
+
+double calcVectorError(double A[][max_i * max_j], 
+					   double Tn[], 
+					   double B[]) {
+	int i, j;
+	double res[max_i * max_j];
+	
+	// calculo A * Tn - B
+	for (i = 0; i < max_i * max_j; i++) {
+		res[i] = -B[i];
+		for (j = 0; j < max_i * max_j; j++) {
+			res[i] += A[i][j] * Tn[j];
+		}
+	}
+	printf("A*Tn - B\n");
+	print1D(res, max_i * max_j);
+	return normaVector(res, max_i * max_j);
+}
+
+double calcVectorErrorOptimized(double A[][max_i * max_j], 
+					   double Tn[], 
+					   double B[]) {
+	// TODO: code this
+	return 1.0;
 }
 
 int main( int argc, char** argv ) {
@@ -97,7 +159,7 @@ int main( int argc, char** argv ) {
 			A[s][indice(i, j-1, max_j)] = - derivada_k_y / (2 * delta_y) + k[i][j+1] / (delta_y * delta_y);
 		}
 	}
-		
+
 	// resolucion por Jacobi
 	int iter, n;
 	for (n = 0; n < 1; n++) {
@@ -105,17 +167,17 @@ int main( int argc, char** argv ) {
 			B[i] = Tn[i] - TInd[i];
 		}
 	
-		for (iter = 0; iter < 100; iter++) {
+		for (iter = 0; iter < 2; iter++) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
 			if (iter % 2 == 0) {
 				jacobiStep(Tn_sig, Tn, B, TInd, A);
-				print1D(Tn_sig);
+				print1D(Tn_sig, max_i * max_j);
 			} 
 			else {
 				jacobiStep(Tn, Tn_sig, B, TInd, A);
-				print1D(Tn);
-			}
+				print1D(Tn, max_i * max_j);
+			} 
 		}
 	}
 	
