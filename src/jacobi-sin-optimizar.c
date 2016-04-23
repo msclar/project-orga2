@@ -63,7 +63,12 @@ void jacobiStepOptimized(double Tn_sig[],
 				double Tn[],
 				double B[],
 				double TInd[], 
-				double A[][max_i * max_j]) {
+				double A[][max_i * max_j],
+				double k[][max_j],
+				int catodo_x, 
+				int catodo_y, 
+				int anodo_x, 
+				int anodo_y) {
 	// X_i^(iter+1) = (b_i - sum (j != i) a_ij * X_j^iter	
 	
 	int i, j;
@@ -81,8 +86,36 @@ void jacobiStepOptimized(double Tn_sig[],
 		}
 	}
 	
-	// los bordes exteriores
-	// TODO
+	// bordes inferior y superior
+	for (j = 1; j < max_j - 1; j++) {
+		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
+		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
+	}
+
+	// bordes izquierdo y derecho	
+	for (i = 1; i < max_i - 1; i++) {
+		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
+		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
+	}
+		
+	// temperatura en electrodos
+	double r = k[catodo_x][catodo_y] / (delta_x * 10); //  h = 10 W / m² K
+	Tn_sig[indice(catodo_x, catodo_y, max_j)] = 
+		r * (
+			Tn_sig[indice(catodo_x+1, catodo_y, max_j)] + 
+			Tn_sig[indice(catodo_x-1, catodo_y, max_j)] + 
+			Tn_sig[indice(catodo_x, catodo_y+1, max_j)] + 
+			Tn_sig[indice(catodo_x, catodo_y-1, max_j)] - 4 * T_a
+		) / (4 * r - 1); 
+	
+	r = k[anodo_x][anodo_y] / (delta_x * 10);
+	Tn_sig[indice(anodo_x, anodo_y, max_j)] = 
+		r * (
+			Tn_sig[indice(anodo_x+1, anodo_y, max_j)] + 
+			Tn_sig[indice(anodo_x-1, anodo_y, max_j)] + 
+			Tn_sig[indice(anodo_x, anodo_y+1, max_j)] + 
+			Tn_sig[indice(anodo_x, anodo_y-1, max_j)] - 4 * T_a
+		) / (4 * r - 1); 
 }
 
 double calcVectorError(double A[][max_i * max_j], 
@@ -98,8 +131,6 @@ double calcVectorError(double A[][max_i * max_j],
 			res[i] += A[i][j] * Tn[j];
 		}
 	}
-	printf("A*Tn - B\n");
-	print1D(res, max_i * max_j);
 	return normaVector(res, max_i * max_j);
 }
 
@@ -167,7 +198,7 @@ int main( int argc, char** argv ) {
 			B[i] = Tn[i] - TInd[i];
 		}
 	
-		for (iter = 0; iter < 2; iter++) {
+		for (iter = 0; iter < 6; iter++) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
 			if (iter % 2 == 0) {
