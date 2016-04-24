@@ -10,19 +10,35 @@ int rho_b = 1060;
 double w_b = 0.00715;
 double T_a = 37.0;
 
-int max_i = 3, max_j = 3; // numeros al azar
+int max_i = 8, max_j = 8; // numeros al azar
 double delta_t = 0.1, delta_x = 0.1, delta_y = 0.1; // numeros al azar
 	
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
 
-void print1D(double matrix[], int cant_elems) {
+// imprime Tn como un vector columna
+void print1DColumna(double matrix[], int cant_elems) {
 	int i;
 	for (i = 0; i < cant_elems; i++) {
 		printf("%f\n", matrix[i]);
 	}
 	printf("\n");
+}
+
+// imprime Tn en dos dimensiones
+void print1D(double matrix[], int max_i, int max_j) {
+	int i;
+	for (i = 0; i < max_i * max_j; i++) {
+		printf("%f", matrix[i]);
+		if (i % max_j == max_j - 1) {
+			printf("\n");
+		}
+		else {
+			printf(" ");
+		}
+	}
+	printf("\n");	
 }
 
 double normaVector(double matriz[], int cant_elems) {
@@ -151,34 +167,50 @@ int main( int argc, char** argv ) {
 	double sigma[max_i][max_j];
 	double phi[max_i][max_j];
 	double A[max_i * max_j][max_i * max_j];
+
+	double catodo_x = 1.365, catodo_y = 2, anodo_x = 2.731, anodo_y = 2;
 	
+	delta_x = 4.0 / max_i; delta_y = 4.0 / max_j; // reciendo de 4cm x 4cm
+	
+	int catodo_x_idx = catodo_x / delta_x;
+	int catodo_y_idx = catodo_y / delta_y;
+	int anodo_x_idx = anodo_x / delta_x;
+	int anodo_y_idx = anodo_y / delta_y;
+	
+	// lectura de input
 	int i, j;
 	for (i = 0; i < max_i; i++) {
 		for (j = 0; j < max_j; j++) {
 			int s = indice(i, j, max_j);
 			Tn[s] = T_a;
 			Tn_sig[s] = T_a;
+			TInd[s] = 0;
 			k[i][j] = 0.565;
 			sigma[i][j] = 0.75;
 			phi[i][j] = 1500 * i * delta_x * pow(M_E, - (delta_x * i - 2) * (delta_x * i - 2) - (delta_y * j - 2) * (delta_y * j - 2)); // estan bien usados los delta?
-			
+		}
+	}
+
+	// calculo de TInd
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {			
 			double deriv_phi_x = (phi[i+1][j] - phi[i-1][j]) / (2 * delta_x);
 			double deriv_phi_y = (phi[i][j+1] - phi[i][j-1]) / (2 * delta_y);
 			double gradient_phi_quad = deriv_phi_x * deriv_phi_x + deriv_phi_y * deriv_phi_y;
-			TInd[s] = w_b * c_b * rho_b * T_a + q_ddd + sigma[i][j] * gradient_phi_quad;
+			TInd[indice(i, j, max_j)] = w_b * c_b * rho_b * T_a + q_ddd + sigma[i][j] * gradient_phi_quad;
 		}
 	}
-	
+
+	// creacion de la matrix A
 	for (i = 0; i < max_i * max_j; i++) {
 		for (j = 0; j < max_i * max_j; j++) {
 			A[i][j] = 0;
 		}
 	}
 	
-	// creacion de la matriz A
-	for (i = 0; i < max_i; i++) {
-		for (j = 0; j < max_j; j++) {
-			// lleno la fila s = indice(i, j) de la matriz A
+	// calculo de A
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {
 			int s = indice(i, j, max_j);
 			double derivada_k_x = (k[i+1][j] - k[i-1][j]) / (2 * delta_x);
 			double derivada_k_y = (k[i][j+1] - k[i][j-1]) / (2 * delta_y);
@@ -191,25 +223,30 @@ int main( int argc, char** argv ) {
 		}
 	}
 
+	// falta calculo de A en el borde? creo que no
+
 	// resolucion por Jacobi
+	print1D(Tn, max_i, max_j);
+	
 	int iter, n;
-	for (n = 0; n < 1; n++) {
+	for (n = 0; n < 10; n++) {
 		for (i = 0; i < max_i * max_j; i++) {
 			B[i] = Tn[i] - TInd[i];
 		}
 	
-		for (iter = 0; iter < 6; iter++) {
+		for (iter = 0; iter < 20; iter++) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
 			if (iter % 2 == 0) {
-				jacobiStep(Tn_sig, Tn, B, TInd, A);
-				print1D(Tn_sig, max_i * max_j);
+				jacobiStepOptimized(Tn_sig, Tn, B, TInd, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
+				//print1D(Tn_sig, max_i, max_j);
 			} 
 			else {
-				jacobiStep(Tn, Tn_sig, B, TInd, A);
-				print1D(Tn, max_i * max_j);
+				jacobiStepOptimized(Tn, Tn_sig, B, TInd, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
+				//print1D(Tn, max_i, max_j);
 			} 
 		}
+		print1D(Tn, max_i, max_j);
 	}
 	
 	return 0;
