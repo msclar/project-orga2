@@ -222,7 +222,7 @@ T_{n+1}(max_i,j) & = T_{n+1}(max_i-1,j)
 
 Además, en el borde de los electrodos (ánodo y cátodo) el cálculo de la temperatura es diferente. Los detalles de su cálculo se pueden ver en el Apéndice A. Siendo $(i,j)$ la aproximación del borde del electrodo,
 
-$$T_{n+1}(i,j) = \frac{r}{4(r-1)} \cdot \big( T_{n+1}(i+1,j) + T_{n+1}(i,j+1) + T_{n+1}(i-1,j) + T_{n+1}(i,j-1) - 4T_a \big)$$
+$$T_{n+1}(i,j) = \frac{r}{4(r-1)} \cdot \big( T_{n+1}(i+1,j) + T_{n+1}(i,j+1) + T_{n+1}(i-1,j) + T_{n+1}(i,j-1)\big) - \frac{T_a}{r-1}$$
 
 En nuestro trabajo, las posiciones de los electrodos serán parte del input del programa.
 

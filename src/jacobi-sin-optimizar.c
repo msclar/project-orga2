@@ -8,7 +8,7 @@ int q_ddd = 10347;
 int c_b = 3840;
 int rho_b = 1060;
 double w_b = 0.00715;
-double T_a = 37.0;
+double T_a = 310.15;
 
 int max_i = 8, max_j = 8; // numeros al azar
 double delta_t = 0.1, delta_x = 0.1, delta_y = 0.1; // numeros al azar
@@ -121,8 +121,11 @@ void jacobiStepOptimized(double Tn_sig[],
 			Tn_sig[indice(catodo_x+1, catodo_y, max_j)] + 
 			Tn_sig[indice(catodo_x-1, catodo_y, max_j)] + 
 			Tn_sig[indice(catodo_x, catodo_y+1, max_j)] + 
-			Tn_sig[indice(catodo_x, catodo_y-1, max_j)] - 4 * T_a
-		) / (4 * r - 1); 
+			Tn_sig[indice(catodo_x, catodo_y-1, max_j)]
+		) / (4 * (r - 1))
+		- T_a / (r - 1); 
+
+	//printf("r = %f Tn = %f \n", r, Tn_sig[indice(catodo_x, catodo_y, max_j)]);
 	
 	r = k[anodo_x][anodo_y] / (delta_x * 10);
 	Tn_sig[indice(anodo_x, anodo_y, max_j)] = 
@@ -130,8 +133,9 @@ void jacobiStepOptimized(double Tn_sig[],
 			Tn_sig[indice(anodo_x+1, anodo_y, max_j)] + 
 			Tn_sig[indice(anodo_x-1, anodo_y, max_j)] + 
 			Tn_sig[indice(anodo_x, anodo_y+1, max_j)] + 
-			Tn_sig[indice(anodo_x, anodo_y-1, max_j)] - 4 * T_a
-		) / (4 * r - 1); 
+			Tn_sig[indice(anodo_x, anodo_y-1, max_j)]
+		) / (4 * (r - 1))
+		- T_a / (r - 1); 
 }
 
 double calcVectorError(double A[][max_i * max_j], 
@@ -176,6 +180,8 @@ int main( int argc, char** argv ) {
 	int catodo_y_idx = catodo_y / delta_y;
 	int anodo_x_idx = anodo_x / delta_x;
 	int anodo_y_idx = anodo_y / delta_y;
+	
+	printf("%d, %d, %d, %d\n", catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
 	
 	// lectura de input
 	int i, j;
@@ -229,7 +235,7 @@ int main( int argc, char** argv ) {
 	print1D(Tn, max_i, max_j);
 	
 	int iter, n;
-	for (n = 0; n < 10; n++) {
+	for (n = 0; n < 20; n++) {
 		for (i = 0; i < max_i * max_j; i++) {
 			B[i] = - rho * c_rho * Tn[i] / delta_t - TInd[i];
 		}
