@@ -231,10 +231,10 @@ int main( int argc, char** argv ) {
 	int iter, n;
 	for (n = 0; n < 10; n++) {
 		for (i = 0; i < max_i * max_j; i++) {
-			B[i] = Tn[i] - TInd[i];
+			B[i] = - rho * c_rho * Tn[i] / delta_t - TInd[i];
 		}
 	
-		for (iter = 0; iter < 20; iter++) {
+		for (iter = 0; iter < 100; iter++) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
 			if (iter % 2 == 0) {

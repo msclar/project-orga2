@@ -228,7 +228,7 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 
 \subsection{Planteo del sistema y resolución}
 
-Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
+Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
 
 Notemos que la matriz $A$ es esparsa, y que sólo los vecinos de $(i,j)$ son no nulos. Con esto conseguiremos reducir mucho el tiempo de cómputo en todas las implementaciones.
 
