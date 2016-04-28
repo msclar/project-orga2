@@ -10,7 +10,7 @@ int rho_b = 1060;
 double w_b = 0.00715;
 double T_a = 310.15;
 
-int max_i = 8, max_j = 8; // numeros al azar
+int max_i = 20, max_j = 20; // numeros al azar
 double delta_t = 0.1, delta_x = 0.1, delta_y = 0.1; // numeros al azar
 	
 int indice (int i, int j, int max_j) {
@@ -27,7 +27,7 @@ void print1DColumna(double matrix[], int cant_elems) {
 }
 
 // imprime Tn en dos dimensiones
-void print1D(double matrix[], int max_i, int max_j) {
+void print2D(double matrix[], int max_i, int max_j) {
 	int i;
 	for (i = 0; i < max_i * max_j; i++) {
 		printf("%f", matrix[i]);
@@ -41,6 +41,26 @@ void print1D(double matrix[], int max_i, int max_j) {
 	printf("\n");	
 }
 
+void print2DMatlab(double matrix[], int max_i, int max_j) {
+	int i;
+	printf("[");
+	for (i = 0; i < max_i * max_j; i++) {
+		if (i % max_j == 0) {
+			printf("[");
+		}
+		
+		printf("%f", matrix[i]);
+		if (i % max_j == max_j - 1) {
+			printf("];\n");
+		}
+		else {
+			printf(" ");
+		}
+	}
+	printf("]\n\n");	
+}
+
+
 double normaVector(double matriz[], int cant_elems) {
 	double result = 0.0;
 	
@@ -50,6 +70,29 @@ double normaVector(double matriz[], int cant_elems) {
 	}
 	// se puede evitar tomar raiz cuadrada si tomamos la convencion
 	return sqrt(result);
+}
+
+double calcVectorError(double A[][max_i * max_j], 
+					   double Tn[], 
+					   double B[]) {
+	int i, j;
+	double res[max_i * max_j];
+	
+	// calculo A * Tn - B
+	for (i = 0; i < max_i * max_j; i++) {
+		res[i] = -B[i];
+		for (j = 0; j < max_i * max_j; j++) {
+			res[i] += A[i][j] * Tn[j];
+		}
+	}
+	return normaVector(res, max_i * max_j);
+}
+
+double calcVectorErrorOptimized(double A[][max_i * max_j], 
+					   double Tn[], 
+					   double B[]) {
+	// TODO: code this
+	return 1.0;
 }
 
 void jacobiStep(double Tn_sig[], 
@@ -109,11 +152,11 @@ void jacobiStepOptimized(double Tn_sig[],
 	}
 
 	// bordes izquierdo y derecho	
-	for (i = 1; i < max_i - 1; i++) {
+	for (i = 0; i < max_i; i++) {
 		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
 		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
 	}
-		
+	
 	// temperatura en electrodos
 	double r = k[catodo_x][catodo_y] / (delta_x * 10); //  h = 10 W / m² K
 	Tn_sig[indice(catodo_x, catodo_y, max_j)] = 
@@ -124,8 +167,6 @@ void jacobiStepOptimized(double Tn_sig[],
 			Tn_sig[indice(catodo_x, catodo_y-1, max_j)]
 		) / (4 * (r - 1))
 		- T_a / (r - 1); 
-
-	//printf("r = %f Tn = %f \n", r, Tn_sig[indice(catodo_x, catodo_y, max_j)]);
 	
 	r = k[anodo_x][anodo_y] / (delta_x * 10);
 	Tn_sig[indice(anodo_x, anodo_y, max_j)] = 
@@ -136,29 +177,6 @@ void jacobiStepOptimized(double Tn_sig[],
 			Tn_sig[indice(anodo_x, anodo_y-1, max_j)]
 		) / (4 * (r - 1))
 		- T_a / (r - 1); 
-}
-
-double calcVectorError(double A[][max_i * max_j], 
-					   double Tn[], 
-					   double B[]) {
-	int i, j;
-	double res[max_i * max_j];
-	
-	// calculo A * Tn - B
-	for (i = 0; i < max_i * max_j; i++) {
-		res[i] = -B[i];
-		for (j = 0; j < max_i * max_j; j++) {
-			res[i] += A[i][j] * Tn[j];
-		}
-	}
-	return normaVector(res, max_i * max_j);
-}
-
-double calcVectorErrorOptimized(double A[][max_i * max_j], 
-					   double Tn[], 
-					   double B[]) {
-	// TODO: code this
-	return 1.0;
 }
 
 int main( int argc, char** argv ) {
@@ -232,7 +250,7 @@ int main( int argc, char** argv ) {
 	// falta calculo de A en el borde? creo que no
 
 	// resolucion por Jacobi
-	print1D(Tn, max_i, max_j);
+	print2DMatlab(Tn, max_i, max_j);
 	
 	int iter, n;
 	for (n = 0; n < 20; n++) {
@@ -252,7 +270,7 @@ int main( int argc, char** argv ) {
 				//print1D(Tn, max_i, max_j);
 			} 
 		}
-		print1D(Tn, max_i, max_j);
+		print2DMatlab(Tn, max_i, max_j);
 	}
 	
 	return 0;
