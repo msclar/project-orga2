@@ -1,0 +1,138 @@
+----------------------------
+----- Introducción
+----------------------------
+
+
+El Laboratorio de Sistemas Complejos es un grupo interdisciplinario de la UBA cuya línea actual de investigación se basa en el estudio de electroporación. Éste es un fenómeno que ocurre cuando se abren poros en la membrana plasmática de las células de un tejido biológico que es puesto en presencia de un campo eléctrico. En base a estos fenómenos se derivan varias aplicaciones, como eliminación de tumores sólidos, transferencia electrogénica, purificación de agua, etc.
+Para entender mejor estos fenómenos el grupo realiza experimentación in-vitro e in-silico. Los modelos in-silico o modelos numéricos con los que se trabaja incluyen, entre otras, a las ecuaciones de Nernst-Plack y Butler-Volmer, para la representación del transporte de especies ionizadas, y de los fenómenos que ocurren en las proximidades de los electrodos, respectivamente.
+
+----------------------------
+----- Propuesta
+----------------------------
+
+La idea para el proyecto es el agregado de una funcionalidad nueva a uno de los modelos que se vienen desarrollando, y su posterior optimización con una de las tecnologías vistas en Organización de Computadoras II. Luego se deberá realizar una comparación de rendimiento entre el caso serial y paralelo. Alternativamente se podrán paralelizar otras partes del código. Analizaremos esto más adelante.
+Concretamente, el modelo que vamos a utilizar es una variación del modelo del capítulo 3 o 4 de la tesis de licenciatura de Herman Shinca, la cual se adjunta.
+El fenómeno que se comenzará a modelar es la distribución de la temperatura en un tejido. Esto resulta interesante puesto que la temperatura no debería ser un factor determinante en los tratamientos basados en electroporación con los que se trabaja. Agregar dicho comportamiento a nuestros modelos refuerza esta hipótesis desde una perspectiva matemática/numérica, y nos acerca a una representación más precisa de la realidad de estos fenómenos biológicos.
+El agregado de la variación de temperatura en el modelo tiene varias aristas, puesto que cada variable dependiente se ve influenciada por los cambios térmicos (la conductividad térmica, eléctrica, los coeficientes de difusión de las especies, etc). Para acotar los límites del proyecto sólo se hará uso de la ecuación de Biocalor de Pennes, pero en 2D. La misma es la ecuación número 4 del paper "A Parametric Study Delineating Irreversible Electroporation from Thermal Damage Based on a Minimally Invasive Intracranial Procedure", el cual se adjunta. 
+Las constantes que se usarán, las cuales se detallan en la tabla 1 de la publicación, son:
+
+C_p= 3680
+rho= 1039
+q'''= 10437
+C_b= 3840
+rho_b= 1060
+w_b=7.15E-3
+
+La conductividad térmica (k), conductividad eléctrica (sigma) y potencial eléctrico (Phi), son variables (tener en cuenta a la hora de discretizar), pero en este modelo se los supondrá constantes para todo tiempo.
+
+k(x,y)=0.565
+sigma(x,y)=0.75
+Phi(x,y)=1500*x*e^(-(x-2)^2-(y-2)^2) 
+
+
+El dominio del problema es un recinto cuadrado, de 4cmx4cm, que representa un tejido. En el centro se encuentran los electrodos, ánodo y cátodo. Ambos están representados por un punto (aproxímenlo con un nodo de su malla). Su ubicación es la misma que la de los puntos máximo y mínimo de Phi, respectivamente. Verifiquenlo, pere creo que son: (1.365, 2) y (2.731, 2).
+ ______________
+|              |
+|              |
+|              |
+|    o    o    |
+|              |
+|              |
+|______________|
+
+Condiciones de borde e iniciales de la temperatura:
+	flujo de calor en el ánodo: q_a=h*(Temp_a-Temp_tejido)  (*1)
+	flujo de calor en el cátodo: q_c=h*(Temp_c-Temp_tejido) (*1)
+	flujo de calor en los bordes del recindo: q_b=0
+	Temp_inicial=310.15 K para todo elemento del dominio
+
+	h=10 W m^-2 K
+
+----------------------------
+----- Discretización
+----------------------------
+
+Las variables dependientes del problema, todos campos escalares (matrices 2D a fines prácticos), son k, sigma, Phi y T. Como se dijo, en este caso puntual las primeras 3 estarán cargadas con valores constantes, en tiempo y espacio k y sigma, y sólo en tiempo Phi.
+El término temporal discretícenlo por diferencias adelantadas, todo lo demás por diferencias centradas (adjunto pdf en donde se muestra la discretización del término difusivo con coeficiente variable). Recomiendo usar un método fuertemente implícito combinado con jacobi (que tiene ventajas a la hora de paralelizar).
+
+Para simplificar la implementación, en vez de armar la matriz del sistema (A T = b), usen despejes (o sea discretizar cada término y luego despejar T_n+1(i,j) donde n es el índice del tiempo, i,j los índices espaciales).
+
+----------------------------
+----- Código
+----------------------------
+
+El lenguaje que usamos es C++. Les adjunto el código de uno de nuestros modelos, la idea es que posteriormente se pueda (no ustedes) hacer un enganche de su código con el nuestro, marqué el lugar con "TODO" en main.cpp.
+Aquí un pseudocódigo que les puede ayudar:
+
+main()
+	// Se definen las condiciones de borde e iniciales de todas las variables
+	// así como también los parámetros numéricos
+	// Usen la clase Entorno del código que les envío para los parámetros numéricos
+	// Creen una clase Temperatura y métanle adentro las constantes de la ecuación de Pennes
+	for t=1 to tMax
+		actualizarTemperatura(constantes,k,sigma,Phi,T)
+		guardar(T)
+
+		// O bien...
+		// T.actualizar(constantes,k,sigma,Phi)
+		// T.guardar()
+	end
+
+
+actualizarTemperatura(entorno,k,sigma,Phi,T)
+
+	// cálculo en el dominio
+	jac_error=1000
+	while jac_error>jac_tolerance
+
+		for i=2 to ii-1
+			for j=2 to jj-1
+				if(entorno.geometriaTipoNodo[i][j]==dominio)
+					T2New(i,j)=F(	T2Old(i+1,j),T2Old(i,j),T2Old(i-1,j),
+							T2Old(i,j+1),T2Old(i,j-1),
+							T1(i+1),T1(i),T1(i-1),
+							entorno,Phi )
+				end
+			end
+		end
+
+		jac_error = calcError(T2New,T2Old)
+
+		T2Old=T2New
+	end
+
+	// cálculo en los electrodos
+	i=i_anodo
+	j=j_anodo
+	T2New(i,j) = ... (*1)
+
+	i=i_catodo
+	j=j_catodo
+	T2New(i,j) = ... (*1)
+
+	// cálculo en los bordes exteriores
+	i=1
+	for j=2 to jj-1
+		T2New(i,j)=T2New(i+1,j)
+	end
+
+	i=ii
+	for j=2 to jj-1
+		T2New(i,j)=T2New(i-1,j)
+	end
+
+	j=1
+	for i=2 to ii-1
+		T2New(i,j)=T2New(i,j+1)
+	end
+
+	j=jj
+	for i=2 to ii-1
+		T2New(i,j)=T2New(i,j-1)
+	end
+
+
+ (*1) Tengo dudas con la discretización del flujo convectivo en las próximidades del electrodo, por lo que envié una consulta a mi codirector, que es dr. e ingeniero nuclear y seguro me lo va a responer bien. Ni bien responda les escribo.
+
+
+
