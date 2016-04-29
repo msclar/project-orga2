@@ -135,11 +135,13 @@ Como la resolución de esta ecuación ocupa una parte no despreciable del cómpu
 
 \subsection{Temperatura en todo el tejido salvo los bordes}
 Partimos de la ecuación de Biocalor de Pennes, 
-$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$ \\
+$$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$$
+
+Donde $k$ es la conductividad térmica, $T_a$ es la temperatura arterial, $w_b$ es la blood perfusion rate, $C_b$ es la capacidad calorífica de la sangre, $\rho_b$ es la densidad de la sangre, $q'''$ es la generación de calor metabólico, $\rho$ es la densidad del tejido y $C_\rho$ es la capacidad calorífica del tejido.\\
 
 Para nuestro modelo, hay varias constantes que suponemos conocidas, en los siguientes valores:
 
-$C_\rho= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 37^\circ C$ \\
+$C_\rho= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 310.15^\circ K$ \\
 
 Además, si bien para implementar el modelo no supondremos nada sobre $k$, $\sigma$ y $\varphi$, a la hora de realizar los cálculos tomaremos los siguientes valores para las funciones,
 como fue indicado por Emmanuel. 
@@ -222,7 +224,9 @@ T_{n+1}(max_i,j) & = T_{n+1}(max_i-1,j)
 
 Además, en el borde de los electrodos (ánodo y cátodo) el cálculo de la temperatura es diferente. Los detalles de su cálculo se pueden ver en el Apéndice A. Siendo $(i,j)$ la aproximación del borde del electrodo,
 
-$$T_{n+1}(i,j) = \frac{r}{4(r-1)} \cdot \big( T_{n+1}(i+1,j) + T_{n+1}(i,j+1) + T_{n+1}(i-1,j) + T_{n+1}(i,j-1)\big) - \frac{T_a}{r-1}$$
+$$T_{n+1}(i,j) = \frac{r}{4(r-1)} \cdot \big( T_{n+1}(i+1,j) + T_{n+1}(i,j+1) + T_{n+1}(i-1,j) + T_{n+1}(i,j-1)\big) - \frac{T_{aire}}{r-1}$$
+
+Donde $r = \frac{k}{\Delta x \cdot h}$, $h = 10 \frac{W}{m^2 K}$ y $T_{aire} = 296 ^\circ K$.\\ 
 
 En nuestro trabajo, las posiciones de los electrodos serán parte del input del programa.
 
@@ -231,5 +235,52 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
 
 Notemos que la matriz $A$ es esparsa, y que sólo los vecinos de $(i,j)$ son no nulos. Con esto conseguiremos reducir mucho el tiempo de cómputo en todas las implementaciones.
+
+\newpage
+\section{Apéndice A: cálculo de temperatura en los electrodos}
+
+Vamos a calcularlo para la pared vertical derecha de cada electrodo, los otros cálculos son análogos. El electrodo tiene 4 \textit{paredes}, pues al discretizar el tejido en una grilla el punto donde se apoya el electrodo quedará dentro de una de las casillas de la grilla.
+
+Siendo $k$ la función definida anteriormente, sea $h = 10 \frac{W}{m^2 K}$ y $T_{aire} = 296 ^\circ K$
+
+\begin{equation*}
+\begin{aligned}
+-k \frac{\partial T}{\partial x} & = h (T_{n+1}(i,j) -  T_{aire}) \\
+-k \ \frac{T_{n+1}(i+1,j) - T_{n+1}(i,j)}{\Delta x} & \approx h (T_{n+1}(i,j) -  T_{aire}) \\
+\frac{k}{\Delta x \cdot h} \cdot (T_{n+1}(i,j) - T_{n+1}(i+1,j)) & \approx T_{n+1}(i,j) -  T_{aire}
+\end{aligned}
+\end{equation*}
+
+Utilizando el renombre $r = \frac{k}{\Delta x \cdot h}$, nos queda:
+
+\begin{equation*}
+\begin{aligned}
+r \cdot (T_{n+1}(i,j) - T_{n+1}(i+1,j)) & \approx T_{n+1}(i,j) - T_{aire} \\
+r \cdot T_{n+1}(i,j) - r \cdot T_{n+1}(i+1,j) & \approx T_{n+1}(i,j) - T_{aire} \\
+r \cdot T_{n+1}(i,j) - T_{n+1}(i,j) & \approx r \cdot T_{n+1}(i+1,j) - T_{aire} \\
+(r - 1) \cdot T_{n+1}(i,j) & \approx r \cdot T_{n+1}(i+1,j) - T_{aire} \\
+T_{n+1}(i,j) & \approx \frac{r \cdot T_{n+1}(i+1,j) - T_{aire}}{r-1}
+\end{aligned}
+\end{equation*}
+
+Esto mismo se puede calcular para las otras tres paredes del electrodo. En resumen, los cuatro cálculos darán como resultado lo siguiente:
+
+\begin{equation*} \label{eq:paredes}
+\begin{aligned}
+T_{n+1}(i,j) & \approx \frac{r \cdot T_{n+1}(i+1,j) - T_{aire}}{r-1} \\
+T_{n+1}(i,j) & \approx \frac{r \cdot T_{n+1}(i-1,j) - T_{aire}}{r-1} \\
+T_{n+1}(i,j) & \approx \frac{r \cdot T_{n+1}(i,j+1) - T_{aire}}{r-1} \\
+T_{n+1}(i,j) & \approx \frac{r \cdot T_{n+1}(i,j-1) - T_{aire}}{r-1}
+\end{aligned}
+\end{equation*}
+
+Finalmente, aproximamos el valor de la temperatura de la casilla donde se coloca el electrodo como el promedio de la temperatura en sus cuadro bordes. Sumando las cuatro ecuaciones de (\ref{eq:paredes}):
+
+\begin{equation*}
+\begin{aligned}
+4 \cdot T_{n+1}(i,j) & \approx \frac{r \cdot [T_{n+1}(i+1,j) + T_{n+1}(i-1,j) + T_{n+1}(i,j+1) + T_{n+1}(i,j-1)] - 4 \cdot T_{aire}}{r-1} \\
+T_{n+1}(i,j) & \approx \frac{r}{4 \cdot (r-1)} \cdot \big(T_{n+1}(i+1,j) + T_{n+1}(i-1,j) + T_{n+1}(i,j+1) + T_{n+1}(i,j-1)\big) - \frac{T_{aire}}{r-1}
+\end{aligned}
+\end{equation*}
 
 \end{document}
