@@ -205,7 +205,7 @@ Ahora sí, despejemos $T_n$ en función de los de $T_{n+1}$. Para abreviar, sea 
 
 \begin{equation*}
 \begin{aligned}
-- T_n(i,j) \frac{\rho \ C_\rho}{\Delta t} - TInd(i,j) &= T_{n+1}(i+1,j) \cdot \bigg(\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} +  k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i-1,j) \cdot \bigg(-\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} + k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j) \cdot \bigg(-\frac{2k}{(\Delta x)^2} -\frac{2k}{(\Delta y)^2} + w_b C_b \rho_b - \rho \ C_\rho \ \frac{1}{\Delta t}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j+1) \cdot \bigg(\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  + T_{n+1}(i,j-1) \cdot \bigg(-\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg)
+- T_n(i,j) \frac{\rho \ C_\rho}{\Delta t} - TInd(i,j) &= T_{n+1}(i+1,j) \cdot \bigg(\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} +  k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i-1,j) \cdot \bigg(-\frac{\partial k}{\partial x} \cdot \frac{1}{2\Delta x} + k \cdot\frac{1}{(\Delta x)^2}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j) \cdot \bigg(-\frac{2k}{(\Delta x)^2} -\frac{2k}{(\Delta y)^2} - w_b C_b \rho_b - \rho \ C_\rho \ \frac{1}{\Delta t}\bigg) \\ & \ \ \ \ \ \ \ + T_{n+1}(i,j+1) \cdot \bigg(\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg) \\ & \ \ \ \ \ \ \  + T_{n+1}(i,j-1) \cdot \bigg(-\frac{\partial k}{\partial y} \cdot \frac{1}{2\Delta y} + k \cdot\frac{1}{(\Delta y)^2}\bigg)
 \end{aligned}
 \end{equation*}
 

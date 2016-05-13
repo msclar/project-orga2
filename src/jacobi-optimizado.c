@@ -13,7 +13,8 @@ double T_aire = 296;
 
 int max_i = 50, max_j = 50; // numeros al azar
 double delta_t = 0.1, delta_x, delta_y; // numeros al azar
-	
+
+
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
@@ -27,20 +28,15 @@ void print1DColumna(double matrix[], int cant_elems) {
 }
 
 void print2DMatlab(double matrix[], int max_i, int max_j) {
-	int i;
+	int i, j;
 	printf("[");
-	for (i = 0; i < max_i * max_j; i++) {
-		if (i % max_j == 0) {
-			printf("[");
+	for (i = 0; i < max_i; i++) {
+		printf("[");
+		for(j = 0; j < max_j; j++) {
+			if(j) printf(" ");
+			printf("%f", matrix[i * max_j + j]);
 		}
-		
-		printf("%f", matrix[i]);
-		if (i % max_j == max_j - 1) {
-			printf("];\n");
-		}
-		else {
-			printf(" ");
-		}
+		printf("];\n");
 	}
 	printf("]\n\n");	
 }
@@ -54,6 +50,54 @@ double normaVector(double matriz[], int cant_elems) {
 	}
 	// se puede evitar tomar raiz cuadrada si tomamos la convencion
 	return sqrt(result);
+}
+
+
+void pasoLaplace(double* res, double* phi, int imax, int jmax) {
+	int i, j;
+	for(i = 1; i < imax - 1; i++) {
+		for(j = 1; j < jmax - 1; j++) {
+			int posactual = indice(i , j, jmax);
+			res[posactual] = (phi[posactual - 1] + phi[posactual + 1] + phi[posactual - jmax] + phi[posactual + jmax]) / 4.0;
+		}
+	}
+	
+	for(i = 1; i < imax - 1; i++) {
+		res[indice(i, 0, jmax)] = res[indice(i, 1, jmax)];
+		res[indice(i, jmax-1, jmax)] = res[indice(i, jmax-2, jmax)]; 
+	}
+	
+	for(j = 0; j < imax; j++) {
+		res[indice(0, j, jmax)] = res[indice(1, j, jmax)];
+		res[indice(imax-1, j, jmax)] = res[indice(imax-2, j, jmax)]; 
+	}
+	
+	return;
+}
+
+void obtenerLaplace(double* res, int anodoi, int anodoj, double anodov, int catodoi, int catodoj, double catodov, int imax, int jmax) {
+	int i;
+	for(i = 0; i < imax*jmax; i++) {
+		res[i] = (anodov + catodov) / 2.0;
+	}
+	
+	int posanodo = indice(anodoi, anodoj, jmax);
+	int poscatodo = indice(catodoi, catodoj, jmax);
+	res[posanodo] = anodov;
+	res[poscatodo] = catodov;
+	
+	double aux[imax][jmax];
+	int corridas;
+	for(corridas = 0; corridas < 750; corridas++) {		
+		pasoLaplace((double*) aux, res, imax, jmax),
+		aux[anodoi][anodoj] = anodov;
+		aux[catodoi][catodoj] = catodov;
+		
+		pasoLaplace(res,(double*) aux, imax, jmax),
+		res[posanodo] = anodov;
+		res[poscatodo] = catodov;
+	}	
+	return;
 }
 
 double calcularPosicion(int i,
@@ -196,13 +240,18 @@ int main( int argc, char** argv ) {
 	
 	int catodo_x_idx = catodo_x / delta_x;
 	int catodo_y_idx = catodo_y / delta_y;
+	double catodo_v = 0;
 	int anodo_x_idx = anodo_x / delta_x;
 	int anodo_y_idx = anodo_y / delta_y;
+	double anodo_v = 1500;
 	
 	printf("%d, %d, %d, %d\n", catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
 	
-	// lectura de input
 	int i, j;
+	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
+	print2DMatlab(phi, max_i, max_j);
+	
+	// lectura de input
 	for (i = 0; i < max_i; i++) {
 		for (j = 0; j < max_j; j++) {
 			int s = indice(i, j, max_j);
@@ -211,7 +260,7 @@ int main( int argc, char** argv ) {
 			TInd[s] = 0;
 			k[s] = 0.565;
 			sigma[s] = 0.75;
-			phi[s] = 1500 * i * delta_x * pow(M_E, - (delta_x * i - 2) * (delta_x * i - 2) - (delta_y * j - 2) * (delta_y * j - 2)); // estan bien usados los delta?
+			//phi[s] = 1500 * i * delta_x * pow(M_E, - (delta_x * i - 2) * (delta_x * i - 2) - (delta_y * j - 2) * (delta_y * j - 2)); // estan bien usados los delta?
 		}
 	}
 
@@ -238,7 +287,7 @@ int main( int argc, char** argv ) {
 			double derivada_k_x = (k[indice(i+1, j, max_j)] - k[indice(i-1, j, max_j)]) / (2 * delta_x);
 			double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
 			
-			A[indice(s, 4, 5)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) + w_b * C_b * rho_b - rho * C_rho / delta_t;
+			A[indice(s, 4, 5)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) - w_b * C_b * rho_b - rho * C_rho / delta_t;
 			A[indice(s, 2, 5)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
 			A[indice(s, 0, 5)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
 			A[indice(s, 3, 5)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
