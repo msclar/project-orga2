@@ -29,16 +29,14 @@ void print1DColumna(double matrix[], int cant_elems) {
 
 void print2DMatlab(double matrix[], int max_i, int max_j, FILE* out) {
 	int i, j;
-	fprintf(out, "[");
 	for (i = 0; i < max_i; i++) {
-		fprintf(out, "[");
 		for(j = 0; j < max_j; j++) {
 			if(j) fprintf(out, " ");
 			fprintf(out, "%f", matrix[i * max_j + j]);
 		}
-		fprintf(out, "];\n");
+		fprintf(out, "\n");
 	}
-	fprintf(out, "]\n\n");	
+	fprintf(out, "\n\n");	
 }
 
 double normaVector(double matriz[], int cant_elems) {
