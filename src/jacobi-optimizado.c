@@ -27,18 +27,18 @@ void print1DColumna(double matrix[], int cant_elems) {
 	printf("\n");
 }
 
-void print2DMatlab(double matrix[], int max_i, int max_j) {
+void print2DMatlab(double matrix[], int max_i, int max_j, FILE* out) {
 	int i, j;
-	printf("[");
+	fprintf(out, "[");
 	for (i = 0; i < max_i; i++) {
-		printf("[");
+		fprintf(out, "[");
 		for(j = 0; j < max_j; j++) {
-			if(j) printf(" ");
-			printf("%f", matrix[i * max_j + j]);
+			if(j) fprintf(out, " ");
+			fprintf(out, "%f", matrix[i * max_j + j]);
 		}
-		printf("];\n");
+		fprintf(out, "];\n");
 	}
-	printf("]\n\n");	
+	fprintf(out, "]\n\n");	
 }
 
 double normaVector(double matriz[], int cant_elems) {
@@ -249,7 +249,8 @@ int main( int argc, char** argv ) {
 	
 	int i, j;
 	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
-	print2DMatlab(phi, max_i, max_j);
+	FILE* phi_file = fopen("phi.out", "w");
+	print2DMatlab(phi, max_i, max_j, phi_file);
 	
 	// lectura de input
 	for (i = 0; i < max_i; i++) {
@@ -296,7 +297,7 @@ int main( int argc, char** argv ) {
 	}
 
 	// resolucion por Jacobi
-	print2DMatlab(Tn, max_i, max_j);
+	print2DMatlab(Tn, max_i, max_j, phi_file);
 	
 	int n;
 	for (n = 0; n < 400; n++) {
@@ -311,8 +312,14 @@ int main( int argc, char** argv ) {
 			jacobiStepOptimized(Tn, Tn_sig, B, TInd, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
 			printf("%.6f\n", calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx));
 		}
-		print2DMatlab(Tn, max_i, max_j);
+		
+		char str[32];
+		sprintf(str, "output/T%d.out", n);
+		FILE* Tn_file = fopen(str, "w");
+		print2DMatlab(Tn, max_i, max_j, Tn_file);
+		fclose(Tn_file);
 	}
+	fclose(phi_file);
 	
 	return 0;
 }
