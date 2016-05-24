@@ -125,7 +125,7 @@
 
 \section{Objetivo del trabajo}
 
-El objetivo del trabajo es resolver la ecuación de Biocalor de Pennes utilizando el método de Jacobi para calcular la temperatura en cada sección de un tejido a cada instante de tiempo. Esto se enmarca dentro de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección de su modelo para identificar la temperatura y posición óptimas en las que aplicar un tratamiento para reducir los tumores cancerígenos. A grandes rasgos, el tratamiento consiste en colocar un ánodo y un cátodo en puntos específicos de la piel del paciente cercanos al tumor y variar su temperatura para lograr una reducción del tumor. Gráficamente,
+El objetivo del trabajo es resolver la ecuación de Biocalor de Pennes utilizando el método de Jacobi para calcular la temperatura en cada sección de un tejido a cada instante de tiempo. Esto se enmarca dentro de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección de su modelo para identificar la temperatura y posición óptimas en las que aplicar un tratamiento para reducir los tumores cancerígenos. A grandes rasgos, los tratamientos ultilizados consiste en colocar un ánodo y un cátodo en puntos específicos de la piel del paciente cercanos al tumor y lograr la destrucción del tejido cancerígeno debido a cambios de pH, aumento de permeabilidad irreversible en la membrana plasmática o aumento en la absorción del quimioterápico, entre otros. Como efecto secundario del tratamiento se produce un aumento de temperatura en el tejido. Nosotros desarrollaremos un modelo para simular calentamiento del tejido y así poder estudiar que consecuencias trae al paciente. Gráficamente,
 
 %% insertar dibujo de emmanuel
 
@@ -137,23 +137,26 @@ Como la resolución de esta ecuación ocupa una parte no despreciable del cómpu
 Partimos de la ecuación de Biocalor de Pennes, 
 $$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$$
 
-Donde $k$ es la conductividad térmica, $T_a$ es la temperatura arterial, $w_b$ es la blood perfusion rate, $C_b$ es la capacidad calorífica de la sangre, $\rho_b$ es la densidad de la sangre, $q'''$ es la generación de calor metabólico, $\rho$ es la densidad del tejido y $C_\rho$ es la capacidad calorífica del tejido.\\
+Donde $\sigma$ es la conductividad eléctrica, $\phi$ es el potencial eléctrico, $k$ es la conductividad térmica, $T_a$ es la temperatura arterial, $w_b$ es la blood perfusion rate, $C_b$ es la capacidad calorífica de la sangre, $\rho_b$ es la densidad de la sangre, $q'''$ es la generación de calor metabólico, $\rho$ es la densidad del tejido y $C_\rho$ es la capacidad calorífica del tejido.\\
 
 Para nuestro modelo, hay varias constantes que suponemos conocidas, en los siguientes valores:
 
 $C_\rho= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 310.15^\circ K$ \\
 
-Además, si bien para implementar el modelo no supondremos nada sobre $k$, $\sigma$ y $\varphi$, a la hora de realizar los cálculos tomaremos los siguientes valores para las funciones,
+$k$, $\sigma$ y $\varphi$ son campos escalares variables. Sin embargo, a la hora de realizar los cálculos tomaremos los siguientes valores para las funciones,
 como fue indicado por Emmanuel. 
 
 $k(x,y)=0.565$ \\
 $\sigma(x,y)=0.75$ \\
-$\varphi(x,y)=1500 \ x \ e^{-(x-2)^2-(y-2)^2}$ \\
+
+Para calcular $\varphi$ supondremos dado un ánodo en la posición $(x_a, y_a)$ con potencial eléctrico constante $q_a$ y un cátodo en la posición $(x_c, y_c)$ con potencial eléctrico constante $q_c$. Luego obtenemos como se extiende la $\varphi$ a todo el recinto resolviendo la ecuación de Laplace dados los puntos del ánodo y cátodo fijos y condición de borde de flujo cero. Para más detalles sobre como calcular esto ver apéndice B.\\
+
+Notar que en estos valores particulares los campos son constantes en el tiempo pero al realizar la discretización del problema no lo supondremos constante que sino lo haremos en la versión general donde sus valores podrían depender del tiempo.
 
 Entonces, los únicos valores desconocidos para nosotros son los $T_n(i,j)$, es decir, el valor de la temperatura en el tiempo $n$ (ya discretizado) en cada lugar del espacio $(i,j)$.
 Utilizaremos las discretizaciones tal y como nos fueron indicadas: el término temporal por diferencias adelantadas, los términos espaciales por diferencias centradas. \\
 
-$\nabla \cdot (k \nabla T)$ es el Laplaciano, y lo calculamos a continuación.
+A continuación calcularemos el término $\nabla \cdot (k \nabla T)$:
 \begin{equation} \label{eq:nablaT}
 \begin{split}
 \nabla \cdot (k \nabla T) & = \nabla \cdot k \bigg(\frac{\partial T}{\partial x}, \frac{\partial T}{\partial y}\bigg) \\
@@ -212,7 +215,7 @@ Ahora sí, despejemos $T_n$ en función de los de $T_{n+1}$. Para abreviar, sea 
 Con estas ecuaciones nos quedará un sistema a resolver, pero antes de plantearlo debemos explicitar cuáles serán las condiciones de borde en este problema, ya que las ecuaciones antes dichas no valen en el borde exterior ni alrededor del ánodo y cátodo.
 
 \subsection{Temperatura en los bordes}
-En los bordes exteriores, el modelo propuesto asume que la temperatura en el borde será la misma que en el inmediato vecino interno. Más formalmente, asumiremos que:
+La condición de borde del sistema es de flujo cero, es decir $q \cdot \hat{n} = 0$ donde $\hat{n}$ es el vector unitario normal al borde del recinto. Esto quiere decir que $-K \nabla T \cdot \hat{n} = 0$, dividiendo por $-K$ queda $\nabla T \cdot \hat{n} = 0$. Esto se interpreta como que en el borde la derivada en la dirección hacia adentro es nula. Al discretizar, esto se traduce en que la diferencia entre la temperatura en un punto del borde y su inmediato vecino interno es nula, es decir que son iguales. Más formalmente, asumiremos que:
 \begin{equation*}
 \begin{aligned}
 T_{n+1}(0,j) & = T_{n+1}(1,j) \\ 
@@ -232,9 +235,9 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 
 \subsection{Planteo del sistema y resolución}
 
-Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
+Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Consideramos a $A$ como la matriz cuadrada de $max_i*max_j$ donde cada fila (y cada columna) corresponde a una posición $(i, j)$ de la discretización de modo que en la fila de la posición $(i, j)$ tendremos los coeficientes de la ecuación correspondiente a $T_n(i,j)$ para cada posición de la grilla. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
 
-Notemos que la matriz $A$ es esparsa, y que sólo los vecinos de $(i,j)$ son no nulos. Con esto conseguiremos reducir mucho el tiempo de cómputo en todas las implementaciones.
+Notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes que podrían ser no nulos corresponden a las posiciones del punto en cuestión y sus vecinos. Con esto conseguiremos reducir mucho el tiempo de cómputo en todas las implementaciones.
 
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
@@ -283,4 +286,19 @@ T_{n+1}(i,j) & \approx \frac{r}{4 \cdot (r-1)} \cdot \big(T_{n+1}(i+1,j) + T_{n+
 \end{aligned}
 \end{equation*}
 
+\newpage
+\section{Apéndice B: cálculo del potencial eléctrico}
+
+El potencial eléctrico es un campo escalar definido como la solución de la ecuación de Laplace ($\delta \varphi = 0$) dados dos puntos fijos (ánodo y ćatodo) y condición de borde de flujo cero.\\
+La discretización de la ecuación $\delta \varphi = 0$ es conocida y corresponde a que una posición es el promedio de sus vecinos. Es decir, $$\varphi(i, j) = \frac{\varphi(i-1, j) + \varphi(i+1, j) + \varphi(i, j-1) + \varphi(i, j+1)}{4}$$
+Por otro lado, la condición de borde es la misma que en el caso de la ecuación de calor, por lo que las fórmulas de las discretizaciones en los puntos del borde son análogas y equivalen a:
+\begin{equation*}
+\begin{aligned}
+\varphi(0,j) & = \varphi(1,j) \\ 
+\varphi(i,0) & = \varphi(i,1) \\
+\varphi(i,max_j) & = \varphi(i,max_j-1) \\ 
+\varphi(max_i,j) & = \varphi(max_i-1,j)
+\end{aligned}
+\end{equation*}
+Para obtener una solución aproximada del sistema, iteramos reemplazando el potencial actual de cada posición por el promedio de sus vecinos hasta que estos valores converjan.
 \end{document}
