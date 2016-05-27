@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <math.h>
-#define EPS 0.001
+#define EPS 0.000001
 // inicializacion de variables
 int C_rho = 3680;
 int rho = 1039;
@@ -11,8 +11,8 @@ double w_b = 0.00715;
 double T_a = 310.15;
 double T_aire = 296;
 
-int max_i = 50, max_j = 50; // numeros al azar
-double delta_t = 0.1, delta_x, delta_y; // numeros al azar
+int max_i = 20, max_j = 20; // numeros al azar
+double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
 
 
 int indice (int i, int j, int max_j) {
@@ -152,6 +152,7 @@ double calcVectorError(double A[],
 			res[indice(anodo_x, anodo_y+1, max_j)] + 
 			res[indice(anodo_x, anodo_y-1, max_j)]
 		) / (4 * (r - 1));
+		//printf("%f\n", normaVector(res, max_i * max_j));
 	return normaVector(res, max_i * max_j);
 }
 
@@ -221,8 +222,20 @@ void jacobiStepOptimized(double Tn_sig[],
 		- T_aire / (r - 1); 
 }
 
+void calcularTInd(double* phi, double delta_x, double delta_y, double* sigma, double* TInd){
+	int i, j;
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {			
+			double deriv_phi_x = (phi[indice(i+1, j, max_j)] - phi[indice(i-1, j, max_j)]) / (2 * delta_x);
+			double deriv_phi_y = (phi[indice(i, j+1, max_j)] - phi[indice(i, j-1, max_j)]) / (2 * delta_y);
+			double gradient_phi_quad = deriv_phi_x * deriv_phi_x + deriv_phi_y * deriv_phi_y;
+			TInd[indice(i, j, max_j)] = w_b * C_b * rho_b * T_a + q_ddd + sigma[indice(i, j, max_j)] * gradient_phi_quad;
+		}
+	}
+}
+
 int main( int argc, char** argv ) {
-	freopen("test2.out", "w", stdout);
+	//freopen("test2.out", "w", stdout);
 	double Tn[max_i * max_j];
 	double Tn_sig[max_i * max_j];
 	double TInd[max_i * max_j];
@@ -231,17 +244,19 @@ int main( int argc, char** argv ) {
 	double sigma[max_i * max_j];
 	double phi[max_i * max_j];
 	double A[max_i * max_j * 5];
+	double empty[max_i * max_j];
+	double TIndNull[max_i * max_j];
 
-	double catodo_x = 1.365, catodo_y = 2, anodo_x = 2.731, anodo_y = 2;
+	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;
 	
-	delta_x = 4.0 / max_i; delta_y = 4.0 / max_j; // recinto de 4cm x 4cm
+	delta_x = 0.1 / max_i; delta_y = 0.1 / max_j; // recinto de 0.1cm x 0.1cm
 	
 	int catodo_x_idx = catodo_x / delta_x;
 	int catodo_y_idx = catodo_y / delta_y;
 	double catodo_v = 0;
 	int anodo_x_idx = anodo_x / delta_x;
 	int anodo_y_idx = anodo_y / delta_y;
-	double anodo_v = 1500;
+	double anodo_v = 1000;
 	
 	printf("%d, %d, %d, %d\n", catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
 	
@@ -259,19 +274,15 @@ int main( int argc, char** argv ) {
 			TInd[s] = 0;
 			k[s] = 0.565;
 			sigma[s] = 0.75;
+			empty[s] = 0;
 			//phi[s] = 1500 * i * delta_x * pow(M_E, - (delta_x * i - 2) * (delta_x * i - 2) - (delta_y * j - 2) * (delta_y * j - 2)); // estan bien usados los delta?
 		}
 	}
 
 	// calculo de TInd
-	for (i = 1; i < max_i - 1; i++) {
-		for (j = 1; j < max_j - 1; j++) {			
-			double deriv_phi_x = (phi[indice(i+1, j, max_j)] - phi[indice(i-1, j, max_j)]) / (2 * delta_x);
-			double deriv_phi_y = (phi[indice(i, j+1, max_j)] - phi[indice(i, j-1, max_j)]) / (2 * delta_y);
-			double gradient_phi_quad = deriv_phi_x * deriv_phi_x + deriv_phi_y * deriv_phi_y;
-			TInd[indice(i, j, max_j)] = w_b * C_b * rho_b * T_a + q_ddd + sigma[indice(i, j, max_j)] * gradient_phi_quad;
-		}
-	}
+	calcularTInd(phi, delta_x, delta_y, sigma, TInd);
+	calcularTInd(empty, delta_x, delta_y, sigma, TIndNull);
+	
 	
 	// creacion de la matrix A
 	for (i = 0; i < max_i * max_j * 5; i++) {
@@ -298,25 +309,37 @@ int main( int argc, char** argv ) {
 	print2DMatlab(Tn, max_i, max_j, phi_file);
 	
 	int n;
-	for (n = 0; n < 400; n++) {
+	for (n = 0; n < 320000; n++) {
+		double* TIndAct = TIndNull;
+		if(n % 4000 < 40) TIndAct = TInd;
+			
 		for (i = 0; i < max_i * max_j; i++) {
-			B[i] = - rho * C_rho * Tn[i] / delta_t - TInd[i];
+			B[i] = - rho * C_rho * Tn[i] / delta_t - TIndAct[i];
 		}
 	
-		while (calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx) > EPS) {
+		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx);
+		while (fabs(errorPrevio - errorActual) > EPS) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
-			jacobiStepOptimized(Tn_sig, Tn, B, TInd, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
-			jacobiStepOptimized(Tn, Tn_sig, B, TInd, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
-			printf("%.6f\n", calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx));
+			jacobiStepOptimized(Tn_sig, Tn, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
+			jacobiStepOptimized(Tn, Tn_sig, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
+			//printf("%.6f\n", calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx));
+			errorPrevio = errorActual;
+			errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx);		
 		}
 		
+		/*char str[32];
+		sprintf(str, "output/T%d.out", n);
+		FILE* Tn_file = fopen(str, "w");
+		print2DMatlab(Tn, max_i, max_j, Tn_file);
+		fclose(Tn_file);*/
+	}
+	
 		char str[32];
 		sprintf(str, "output/T%d.out", n);
 		FILE* Tn_file = fopen(str, "w");
 		print2DMatlab(Tn, max_i, max_j, Tn_file);
 		fclose(Tn_file);
-	}
 	fclose(phi_file);
 	
 	return 0;
