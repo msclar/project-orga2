@@ -15,10 +15,16 @@ double T_aire = 296;
 int max_i = 20, max_j = 20; // numeros al azar
 double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
 
+#ifdef ASM
+extern int indice (int, int, int);
+extern int jacobiStep (double*, double*, double*, double*, int, int);
+#endif
 
+#ifndef ASM
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
+#endif
 
 void print1DColumna(double matrix[], int cant_elems) {
 	int i;
@@ -74,7 +80,15 @@ void pasoLaplace(double* res, double* phi, int imax, int jmax) {
 	return;
 }
 
-void obtenerLaplace(double* res, int anodoi, int anodoj, double anodov, int catodoi, int catodoj, double catodov, int imax, int jmax) {
+void obtenerLaplace(double* res, 
+					int anodoi, 
+					int anodoj, 
+					double anodov, 
+					int catodoi, 
+					int catodoj, 
+					double catodov, 
+					int imax, 
+					int jmax) {
 	int i;
 	for(i = 0; i < imax*jmax; i++) {
 		res[i] = (anodov + catodov) / 2.0;
@@ -106,11 +120,11 @@ double calcularPosicion(int i,
 						double B[]) {
 	int s = indice(i, j, max_j);
 	double res = -B[s];
-	res += A[indice(s, 0, 5)] * Tn[indice(i - 1, j, max_j)];
-	res += A[indice(s, 1, 5)] * Tn[indice(i, j - 1, max_j)];
-	res += A[indice(s, 2, 5)] * Tn[indice(i + 1, j, max_j)];
-	res += A[indice(s, 3, 5)] * Tn[indice(i, j + 1, max_j)];
-	res += A[indice(s, 4, 5)] * Tn[indice(i, j, max_j)];
+	res += A[indice(0, s, max_i*max_j)] * Tn[indice(i - 1, j, max_j)];
+	res += A[indice(1, s, max_i*max_j)] * Tn[indice(i, j - 1, max_j)];
+	res += A[indice(2, s, max_i*max_j)] * Tn[indice(i + 1, j, max_j)];
+	res += A[indice(3, s, max_i*max_j)] * Tn[indice(i, j + 1, max_j)];
+	res += A[indice(4, s, max_i*max_j)] * Tn[indice(i, j, max_j)];
 	return res;
 }
 
@@ -177,17 +191,24 @@ void jacobiStepOptimized(double Tn_sig[],
 	
 	int i, j;
 	// los que tienen los 4 vecinos
+	
+	#ifndef ASM
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
 			int s = indice(i, j, max_j);
 			double sum = 0.0;
-			sum += A[indice(s, 0, 5)] * Tn[indice(i-1, j, max_j)];
-			sum += A[indice(s, 2, 5)] * Tn[indice(i+1, j, max_j)];
-			sum += A[indice(s, 1, 5)] * Tn[indice(i, j-1, max_j)];
-			sum += A[indice(s, 3, 5)] * Tn[indice(i, j+1, max_j)];
-			Tn_sig[s] = (B[s] - sum) / A[indice(s, 4, 5)];
+			sum += A[indice(0, s, max_i*max_j)] * Tn[indice(i-1, j, max_j)];
+			sum += A[indice(2, s, max_i*max_j)] * Tn[indice(i+1, j, max_j)];
+			sum += A[indice(1, s, max_i*max_j)] * Tn[indice(i, j-1, max_j)];
+			sum += A[indice(3, s, max_i*max_j)] * Tn[indice(i, j+1, max_j)];
+			Tn_sig[s] = (B[s] - sum) / A[indice(4, s, max_i*max_j)];
 		}
 	}
+	#endif
+	
+	#ifdef ASM
+		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
+	#endif
 	
 	// bordes inferior y superior
 	for (j = 1; j < max_j - 1; j++) {
@@ -298,11 +319,11 @@ int main( int argc, char** argv ) {
 			double derivada_k_x = (k[indice(i+1, j, max_j)] - k[indice(i-1, j, max_j)]) / (2 * delta_x);
 			double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
 			
-			A[indice(s, 4, 5)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) - w_b * C_b * rho_b - rho * C_rho / delta_t;
-			A[indice(s, 2, 5)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
-			A[indice(s, 0, 5)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
-			A[indice(s, 3, 5)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
-			A[indice(s, 1, 5)] = - derivada_k_y / (2 * delta_y) + k[indice(i, j-1, max_j)] / (delta_y * delta_y);
+			A[indice(4, s, max_i*max_j)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) - w_b * C_b * rho_b - rho * C_rho / delta_t;
+			A[indice(2, s, max_i*max_j)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
+			A[indice(0, s, max_i*max_j)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
+			A[indice(3, s, max_i*max_j)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
+			A[indice(1, s, max_i*max_j)] = - derivada_k_y / (2 * delta_y) + k[indice(i, j-1, max_j)] / (delta_y * delta_y);
 		}
 	}
 
