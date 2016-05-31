@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #define EPS 0.000001
 // inicializacion de variables
@@ -235,17 +236,17 @@ void calcularTInd(double* phi, double delta_x, double delta_y, double* sigma, do
 }
 
 int main( int argc, char** argv ) {
-	//freopen("test2.out", "w", stdout);
-	double Tn[max_i * max_j];
-	double Tn_sig[max_i * max_j];
-	double TInd[max_i * max_j];
-	double B[max_i * max_j];
-	double k[max_i * max_j];
-	double sigma[max_i * max_j];
-	double phi[max_i * max_j];
-	double A[max_i * max_j * 5];
-	double empty[max_i * max_j];
-	double TIndNull[max_i * max_j];
+	double *Tn, *Tn_sig, *TInd, *B, *k, *sigma, *phi, *A, *phiZero, *TIndPhiZero;
+	Tn = malloc(max_i * max_j * sizeof(double));
+	TInd = malloc(max_i * max_j * sizeof(double));
+	Tn_sig = malloc(max_i * max_j * sizeof(double));
+	B = malloc(max_i * max_j * sizeof(double));
+	k = malloc(max_i * max_j * sizeof(double));
+	sigma = malloc(max_i * max_j * sizeof(double));
+	phi = malloc(max_i * max_j * sizeof(double));
+	A = malloc(max_i * max_j * 5 * sizeof(double));
+	phiZero = malloc(max_i * max_j * sizeof(double));
+	TIndPhiZero = malloc(max_i * max_j * sizeof(double));
 
 	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;
 	
@@ -274,14 +275,14 @@ int main( int argc, char** argv ) {
 			TInd[s] = 0;
 			k[s] = 0.565;
 			sigma[s] = 0.75;
-			empty[s] = 0;
+			phiZero[s] = 0;
 			//phi[s] = 1500 * i * delta_x * pow(M_E, - (delta_x * i - 2) * (delta_x * i - 2) - (delta_y * j - 2) * (delta_y * j - 2)); // estan bien usados los delta?
 		}
 	}
 
 	// calculo de TInd
 	calcularTInd(phi, delta_x, delta_y, sigma, TInd);
-	calcularTInd(empty, delta_x, delta_y, sigma, TIndNull);
+	calcularTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero);
 	
 	
 	// creacion de la matrix A
@@ -309,8 +310,8 @@ int main( int argc, char** argv ) {
 	print2DMatlab(Tn, max_i, max_j, phi_file);
 	
 	int n;
-	for (n = 0; n < 320000; n++) {
-		double* TIndAct = TIndNull;
+	for (n = 0; n < 400; n++) {
+		double* TIndAct = TIndPhiZero;
 		if(n % 4000 < 40) TIndAct = TInd;
 			
 		for (i = 0; i < max_i * max_j; i++) {
@@ -335,12 +336,13 @@ int main( int argc, char** argv ) {
 		fclose(Tn_file);*/
 	}
 	
-		char str[32];
-		sprintf(str, "output/T%d.out", n);
-		FILE* Tn_file = fopen(str, "w");
-		print2DMatlab(Tn, max_i, max_j, Tn_file);
-		fclose(Tn_file);
+	char str[32];
+	sprintf(str, "output/T%d.out", n);
+	FILE* Tn_file = fopen(str, "w");
+	print2DMatlab(Tn, max_i, max_j, Tn_file);
+	fclose(Tn_file);
 	fclose(phi_file);
 	
+	free(Tn);
 	return 0;
 }

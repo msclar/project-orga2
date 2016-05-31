@@ -125,15 +125,57 @@
 
 \section{Objetivo del trabajo}
 
-El objetivo del trabajo es resolver la ecuación de Biocalor de Pennes utilizando el método de Jacobi para calcular la temperatura en cada sección de un tejido a cada instante de tiempo. Esto se enmarca dentro de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección de su modelo para identificar la temperatura y posición óptimas en las que aplicar un tratamiento para reducir los tumores cancerígenos. A grandes rasgos, los tratamientos ultilizados consiste en colocar un ánodo y un cátodo en puntos específicos de la piel del paciente cercanos al tumor y lograr la destrucción del tejido cancerígeno debido a cambios de pH, aumento de permeabilidad irreversible en la membrana plasmática o aumento en la absorción del quimioterápico, entre otros. Como efecto secundario del tratamiento se produce un aumento de temperatura en el tejido. Nosotros desarrollaremos un modelo para simular calentamiento del tejido y así poder estudiar que consecuencias trae al paciente. Gráficamente,
+El objetivo del trabajo es resolver la ecuación de Biocalor de Pennes 
+utilizando el método de Jacobi para calcular la temperatura en cada 
+sección de un tejido a cada instante de tiempo. Esto se enmarca dentro 
+de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues 
+el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección 
+de su modelo para identificar la temperatura y posición óptimas en las 
+que aplicar un tratamiento para reducir los tumores cancerígenos. A 
+grandes rasgos, los tratamientos ultilizados consiste en colocar un 
+ánodo y un cátodo en puntos específicos de la piel del paciente 
+cercanos al tumor y lograr la destrucción del tejido cancerígeno 
+debido a cambios de pH, aumento de permeabilidad irreversible en la 
+membrana plasmática o aumento en la absorción del quimioterápico, 
+entre otros. Como efecto secundario del tratamiento se produce un 
+aumento de temperatura en el tejido. Nosotros desarrollaremos un 
+modelo para simular calentamiento del tejido y así poder estudiar 
+que consecuencias trae al paciente. Gráficamente,
 
-%% insertar dibujo de emmanuel
+\begin{center}
+	\includegraphics[scale = 0.5]{tejido.png}
+\end{center}
 
-Como la resolución de esta ecuación ocupa una parte no despreciable del cómputo de sus algoritmos completos, lo implementaremos en C plano, en ASM sin SIMD y con SIMD y compararemos los tiempos de ejecución obtenidos con cada una (compilando con gcc e icc). Creemos que utilizar SIMD podría ser muy provechoso en este problema, ya que muchas de las operaciones de matrices que efectuaremos son paralelizables y esperamos ver una significante reducción en el tiempo de ejecución del algoritmo.
+Como la resolución de esta ecuación ocupa una parte no despreciable 
+del cómputo de sus algoritmos completos, lo implementaremos en C plano, 
+en ASM sin SIMD y con SIMD y compararemos los tiempos de ejecución 
+obtenidos con cada una (compilando con gcc e icc). Creemos que 
+utilizar SIMD podría ser muy provechoso en este problema, ya que muchas 
+de las operaciones de matrices que efectuaremos son paralelizables y 
+esperamos ver una significante reducción en el tiempo de ejecución del 
+algoritmo.\\
+
+Cabe destacar que el LSC no tenía implementación alguna de esto que vamos
+a resolver, por lo que parte del alcance del trabajo fue dar un programa
+en C que resuelva correctamente. La comprobación de que los resultados 
+fue no trivial, e incluyó consultas a diversos integrantes del LSC para
+realizar un análisis cuantitativo de los resultados. Una explicación del
+análisis realizado y sus resultados gráficos se mostrará al final del trabajo.
 
 \section{Distribuci\'on de la temperatura: obtención del sistema a resolver}
 
+A continuación partiremos de la ecuación de Biocalor de Pennes y despejaremos
+el sistema de ecuaciones a resolver. Cada punto del tejido tiene una 
+ecuación que describe la evolución de su temperatura: la mayoría de los puntos
+se rigen por las ecuaciones obtenidas en la sección 2.1, mientras que los bordes
+tienen sus particularidades que se describen en la sección 2.2. 
+Llamamos $bordes$ tanto a los bordes exteriores del recinto
+(los bordes de la matriz) como a los puntos donde se aplican los electrodos.
+Las ecuaciones nos fueron ya dadas por el LSC, y nosotros únicamente las 
+comprobamos, hicimos las correcciones necesarias e implementamos en C y ASM.
+
 \subsection{Temperatura en todo el tejido salvo los bordes}
+
 Partimos de la ecuación de Biocalor de Pennes, 
 $$\nabla \cdot (k \nabla T) - w_b C_b \rho_b (T-T_a) + q''' + \sigma |\nabla \varphi|^2 = \rho \ C_\rho \ \frac{\partial T}{\partial t}$$
 
@@ -144,12 +186,17 @@ Para nuestro modelo, hay varias constantes que suponemos conocidas, en los sigui
 $C_\rho= 3680$, $\rho= 1039$, $q'''= 10437$, $C_b= 3840$, $\rho_b= 1060$, $w_b=7.15 \ 10^{-3}$, $T_a = 310.15^\circ K$ \\
 
 $k$, $\sigma$ y $\varphi$ son campos escalares variables. Sin embargo, a la hora de realizar los cálculos tomaremos los siguientes valores para las funciones,
-como fue indicado por Emmanuel. 
+como fue indicado por Emmanuel Luján. 
 
 $k(x,y)=0.565$ \\
 $\sigma(x,y)=0.75$ \\
 
-Para calcular $\varphi$ supondremos dado un ánodo en la posición $(x_a, y_a)$ con potencial eléctrico constante $q_a$ y un cátodo en la posición $(x_c, y_c)$ con potencial eléctrico constante $q_c$. Luego obtenemos como se extiende la $\varphi$ a todo el recinto resolviendo la ecuación de Laplace dados los puntos del ánodo y cátodo fijos y condición de borde de flujo cero. Para más detalles sobre como calcular esto ver apéndice B.\\
+Para calcular $\varphi$ supondremos dado un ánodo en la posición $(x_a, y_a)$ con potencial eléctrico 
+constante $q_a$ y un cátodo en la posición $(x_c, y_c)$ con potencial eléctrico 
+constante $q_c$. Luego obtenemos como se extiende la $\varphi$ a todo el recinto 
+resolviendo la ecuación de Laplace dados los puntos del ánodo y cátodo fijos y 
+condición de borde de flujo cero. Para más detalles sobre como calcular esto ver apéndice B.
+\textbf{La resolución de la ecuación de Laplace también formará parte de nuestro trabajo de implementación.}\\
 
 Notar que en estos valores particulares los campos son constantes en el tiempo pero al realizar la discretización del problema no lo supondremos constante que sino lo haremos en la versión general donde sus valores podrían depender del tiempo.
 
@@ -215,6 +262,8 @@ Ahora sí, despejemos $T_n$ en función de los de $T_{n+1}$. Para abreviar, sea 
 Con estas ecuaciones nos quedará un sistema a resolver, pero antes de plantearlo debemos explicitar cuáles serán las condiciones de borde en este problema, ya que las ecuaciones antes dichas no valen en el borde exterior ni alrededor del ánodo y cátodo.
 
 \subsection{Temperatura en los bordes}
+
+\subsubsection{Temperatura en bordes exteriores}
 La condición de borde del sistema es de flujo cero, es decir $q \cdot \hat{n} = 0$ donde $\hat{n}$ es el vector unitario normal al borde del recinto. Esto quiere decir que $-K \nabla T \cdot \hat{n} = 0$, dividiendo por $-K$ queda $\nabla T \cdot \hat{n} = 0$. Esto se interpreta como que en el borde la derivada en la dirección hacia adentro es nula. Al discretizar, esto se traduce en que la diferencia entre la temperatura en un punto del borde y su inmediato vecino interno es nula, es decir que son iguales. Más formalmente, asumiremos que:
 \begin{equation*}
 \begin{aligned}
@@ -225,6 +274,7 @@ T_{n+1}(max_i,j) & = T_{n+1}(max_i-1,j)
 \end{aligned}
 \end{equation*}
 
+\subsubsection{Temperatura en los puntos del tejido donde se aplican los electrodos}
 Además, en el borde de los electrodos (ánodo y cátodo) el cálculo de la temperatura es diferente. Los detalles de su cálculo se pueden ver en el Apéndice A. Siendo $(i,j)$ la aproximación del borde del electrodo,
 
 $$T_{n+1}(i,j) = \frac{r}{4(r-1)} \cdot \big( T_{n+1}(i+1,j) + T_{n+1}(i,j+1) + T_{n+1}(i-1,j) + T_{n+1}(i,j-1)\big) - \frac{T_{aire}}{r-1}$$
@@ -235,9 +285,35 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 
 \subsection{Planteo del sistema y resolución}
 
-Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y despejar $T_{n+1}$ utilizando Jacobi. Consideramos a $A$ como la matriz cuadrada de $max_i*max_j$ donde cada fila (y cada columna) corresponde a una posición $(i, j)$ de la discretización de modo que en la fila de la posición $(i, j)$ tendremos los coeficientes de la ecuación correspondiente a $T_n(i,j)$ para cada posición de la grilla. Notemos que luego de hallar $T_n$, la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
+Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, 
+podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y 
+despejar $T_{n+1}$ utilizando Jacobi. Consideramos a $A$ como la matriz 
+cuadrada de lado $max_i \cdot max_j$ donde cada fila (y cada columna) corresponde a 
+una posición $(i, j)$ de la discretización de modo que en la fila de la 
+posición $(i, j)$ tendremos los coeficientes de la ecuación correspondiente 
+a $T_n(i,j)$ para cada posición de la grilla. Notemos que luego de hallar $T_n$, 
+la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
 
-Notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes que podrían ser no nulos corresponden a las posiciones del punto en cuestión y sus vecinos. Con esto conseguiremos reducir mucho el tiempo de cómputo en todas las implementaciones.
+Notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes 
+que podrían ser no nulos corresponden a las posiciones del punto en 
+cuestión y sus vecinos. Con esto conseguiremos reducir mucho el tiempo 
+de cómputo en todas las implementaciones. Esto también implicó un crecimiento
+en la complejidad del código a paralelizar, pues ya no es una simple resolución
+de sistema de ecuaciones sino que hay que tener sumo cuidado en respetar
+los índices indicados como no nulos. \\
+
+Como los bordes se rigen por ecuaciones distintas al resto del tejido, comentamos a continuación
+cómo las tratamos, teniendo como objetivo optimizar el tiempo de cómputo total:
+\begin{itemize}
+\item Las ecuaciones de los bordes exteriores sólo
+relacionan $T_{n+1}$ en distintos $(i,j)$. La mejor forma de implementar esta
+restricción que encontramos fue no incluir los bordes exteriores en el sistema $A$, y una vez
+resuelto aplicar las condiciones de borde.
+\item Los puntos donde se aplican los electrodos también tienen una 
+fórmula diferente al de la mayoría de los puntos. Para evitar incluir 
+condicionales se resolvieron esos puntos como si valiera la fóŕmula general
+y luego se sobreescribieron los valores por los nuevos.
+\end{itemize}
 
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
@@ -301,4 +377,5 @@ Por otro lado, la condición de borde es la misma que en el caso de la ecuación
 \end{aligned}
 \end{equation*}
 Para obtener una solución aproximada del sistema, iteramos reemplazando el potencial actual de cada posición por el promedio de sus vecinos hasta que estos valores converjan.
+
 \end{document}
