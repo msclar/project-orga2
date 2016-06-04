@@ -1,6 +1,6 @@
 \documentclass[a4paper]{article}
 
-\usepackage[paper=a4paper, left=1.5cm, right=1.5cm, bottom=1.5cm, top=3.5cm]{geometry}
+\usepackage[paper=a4paper, left=1.5cm, right=1.5cm, bottom=1.5cm, top=2.5cm]{geometry}
 \usepackage[spanish,activeacute]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage{amsthm}
@@ -72,7 +72,7 @@
 \integrante{Zylber, Ariel}{530/12}{arielzylber@gmail.com}
 
 \def\Materia{Final de Organizaci\'on del Computador II}
-\def\Fecha{Alg\'un d\'ia}
+\def\Fecha{Muy pronto}
 
 %----- CARATULA -----%
 
@@ -132,36 +132,48 @@ de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues
 el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección 
 de su modelo para identificar la temperatura y posición óptimas en las 
 que aplicar un tratamiento para reducir los tumores cancerígenos. A 
-grandes rasgos, los tratamientos ultilizados consiste en colocar un 
-ánodo y un cátodo en puntos específicos de la piel del paciente 
+grandes rasgos, los tratamientos ultilizados consiste en colocar dos electrodos (un 
+ánodo y un cátodo) en puntos específicos de la piel del paciente 
 cercanos al tumor y lograr la destrucción del tejido cancerígeno 
 debido a cambios de pH, aumento de permeabilidad irreversible en la 
 membrana plasmática o aumento en la absorción del quimioterápico, 
 entre otros. Como efecto secundario del tratamiento se produce un 
 aumento de temperatura en el tejido. Nosotros desarrollaremos un 
 modelo para simular calentamiento del tejido y así poder estudiar 
-que consecuencias trae al paciente. Gráficamente,
+que consecuencias trae al paciente. Gráficamente,\\
 
-\begin{center}
-	\includegraphics[scale = 0.5]{tejido.png}
-\end{center}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.18]{tejido-anotado.png}
+  \caption{Representación gráfica del tratamiento para el tumor}
+\end{figure}
 
-Como la resolución de esta ecuación ocupa una parte no despreciable 
-del cómputo de sus algoritmos completos, lo implementaremos en C plano, 
-en ASM sin SIMD y con SIMD y compararemos los tiempos de ejecución 
-obtenidos con cada una (compilando con gcc e icc). Creemos que 
+Además de resolver la ecuación de Pennes, se resolverá la ecuación
+de Laplace para calcular el potencial eléctrico del tejido (que es uno de los parámetros
+de la ecuación de Pennes). Una explicación detallada de su cálculo se podrá ver más adelante.\\
+
+Como la resolución de estas ecuaciones ocupa una parte no despreciable 
+del cómputo de sus algoritmos completos, lo implementamos en C plano y en ASM con SIMD y 
+compararemos los tiempos de ejecución obtenidos con cada una (compilando con gcc e icc). Creemos que 
 utilizar SIMD podría ser muy provechoso en este problema, ya que muchas 
 de las operaciones de matrices que efectuaremos son paralelizables y 
 esperamos ver una significante reducción en el tiempo de ejecución del 
-algoritmo.\\
+algoritmo. Notar que se aprovechará la estructura particular del problema para optimizar al máximo la
+resolución: el programa resultante es más complejo pero esto hace que se reduzca la complejidad
+temporal del programa en varios órdenes.\\
+
+Como todos los cálculos son con números de punto flotante con doble 
+precisión, utilizaremos los registros YMM (cuya longitud es el doble que la de los
+registros XMM vistos en la materia) para poder paralelizar el cálculo de 4 números en vez de sólo 2.\\
 
 Cabe destacar que el LSC no tenía implementación alguna de esto que vamos
 a resolver, por lo que parte del alcance del trabajo fue dar un programa
-en C que resuelva correctamente. La comprobación de que los resultados 
+en C que resuelva correctamente el problema. La comprobación de que los resultados 
 fue no trivial, e incluyó consultas a diversos integrantes del LSC para
-realizar un análisis cuantitativo de los resultados. Una explicación del
+realizar un análisis cuantitativo y cualitativo de los resultados. Una explicación del
 análisis realizado y sus resultados gráficos se mostrará al final del trabajo.
 
+\newpage
 \section{Distribuci\'on de la temperatura: obtención del sistema a resolver}
 
 A continuación partiremos de la ecuación de Biocalor de Pennes y despejaremos
