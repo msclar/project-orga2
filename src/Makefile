@@ -5,7 +5,7 @@ CFLAGS = -ggdb -DASM -Wall -std=c99 -pedantic -m64 -lm
 ASMFLAGS = -felf64 -g -F dwarf
 
 BIN = jacobi-optimizado
-BIN_DIR = ../bin
+BIN_DIR = 
 
 OBJS = jacobi-optimizado.o indice.o \
 			jacobiStep.o
@@ -14,7 +14,6 @@ OBJS = jacobi-optimizado.o indice.o \
 
 $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@ -lm
-	cp $(BIN) $(BIN_DIR)/$(BIN)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

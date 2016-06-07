@@ -177,10 +177,10 @@ double calcVectorError(double A[],
  *   3
  */
 
-void jacobiStepOptimized(double Tn_sig[], 
-				double Tn[],
-				double B[],
-				double TInd[], 
+void jacobiStepOptimized(double* Tn_sig, 
+				double* Tn,
+				double* B,
+				double* TInd, 
 				double A[],
 				double k[],
 				int catodo_x, 
@@ -331,7 +331,7 @@ int main( int argc, char** argv ) {
 	print2DMatlab(Tn, max_i, max_j, phi_file);
 	
 	int n;
-	for (n = 0; n < 400; n++) {
+	for (n = 0; n < 200; n++) {
 		double* TIndAct = TIndPhiZero;
 		if(n % 4000 < 40) TIndAct = TInd;
 			
@@ -365,5 +365,14 @@ int main( int argc, char** argv ) {
 	fclose(phi_file);
 	
 	free(Tn);
+	free(TInd);
+	free(Tn_sig);
+	free(B);
+	free(k);
+	free(sigma);
+	free(phi);
+	free(A);
+	free(phiZero);
+	free(TIndPhiZero);
 	return 0;
 }
