@@ -34,6 +34,18 @@ void print1DColumna(double matrix[], int cant_elems) {
 	printf("\n");
 }
 
+void printDbg2DMatlab(double matrix[], int max_i, int max_j) {
+	int i, j;
+	for (i = 0; i < max_i; i++) {
+		for(j = 0; j < max_j; j++) {
+			if(j) printf(" ");
+			printf("%f", matrix[i * max_j + j]);
+		}
+		printf("\n");
+	}
+	printf("\n\n");	
+}
+
 void print2DMatlab(double matrix[], int max_i, int max_j, FILE* out) {
 	int i, j;
 	for (i = 0; i < max_i; i++) {
@@ -210,6 +222,7 @@ void jacobiStepOptimized(double* Tn_sig,
 		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
 	#endif
 	
+	
 	// bordes inferior y superior
 	for (j = 1; j < max_j - 1; j++) {
 		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
@@ -242,6 +255,7 @@ void jacobiStepOptimized(double* Tn_sig,
 			Tn_sig[indice(anodo_x, anodo_y-1, max_j)]
 		) / (4 * (r - 1))
 		- T_aire / (r - 1); 
+	//printDbg2DMatlab(Tn_sig, max_i, max_j);
 }
 
 void calcularTInd(double* phi, double delta_x, double delta_y, double* sigma, double* TInd){
@@ -331,7 +345,7 @@ int main( int argc, char** argv ) {
 	print2DMatlab(Tn, max_i, max_j, phi_file);
 	
 	int n;
-	for (n = 0; n < 200; n++) {
+	for (n = 0; n < 320000; n++) {
 		double* TIndAct = TIndPhiZero;
 		if(n % 4000 < 40) TIndAct = TInd;
 			

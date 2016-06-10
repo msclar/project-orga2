@@ -14,7 +14,6 @@ jacobiStep:
 	mov rbp, rsp
 	push r14
 	push r15
-
 	%define Tn_sig rdi
 	%define Tn rsi
 	%define B r15
@@ -42,13 +41,14 @@ jacobiStep:
 	loop_i:
 		mov j, max_j
 		shl max_j, 3
-		sub j, 2
+		add j, 1
 		shr j, 2
 		loop_j:
 			;vmovupd: leer 4 doubles contiguos de memoria
 			%define sTn r14
 			mov sTn, s
 			sub sTn, max_j
+			vxorpd ymm3, ymm3
 			vmovupd ymm1, [Tn + sTn]
 			vmovupd ymm2, [A + s]
 			vmulpd ymm2, ymm1
@@ -95,7 +95,6 @@ jacobiStep:
 			jne loop_j
 		
 		shr max_j, 3
-		add s, 8
 		dec i
 		cmp i, 0
 		jne loop_i
