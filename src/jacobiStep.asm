@@ -9,11 +9,6 @@ section .text
 	global jacobiStep
     extern printf
 
-jacobiStep:
-	push rbp
-	mov rbp, rsp
-	push r14
-	push r15
 	%define Tn_sig rdi
 	%define Tn rsi
 	%define B r15
@@ -25,6 +20,30 @@ jacobiStep:
 	%define max_ij r11
 	%define i r12
 	%define j r13
+	
+copiarfila: ;copia a la fila2 el contenido de la fila1
+	%define fila1 r14
+	%define fila2 r12
+	
+	mov j, max_j
+	add j, 1
+	shr j, 2
+	mov s, 8
+	loop_fila:
+		vmovupd ymm1, [fila1+s]
+		vmovupd [fila2+s], ymm1
+		add s, 32
+		dec j
+		cmp j, 0
+		jne loop_fila
+	ret
+		
+
+jacobiStep:
+	push rbp
+	mov rbp, rsp
+	push r14
+	push r15
 	
 	mov i, max_i ; esto seguro esta mal
 	sub i, 2
@@ -98,7 +117,14 @@ jacobiStep:
 		dec i
 		cmp i, 0
 		jne loop_i
-		
+	
+	;~ mov fila2, Tn_sig
+	;~ mov fila1, Tn_sig
+	;~ shl max_j, 3
+	;~ add fila1, max_j
+	;~ shr max_j, 3
+	;~ call copiarfila
+	
 	pop r15
 	pop r14
 	pop rbp
