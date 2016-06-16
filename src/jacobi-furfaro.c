@@ -14,17 +14,9 @@ double T_aire = 296;
 
 double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
 
-#ifdef ASM
-extern int indice (int, int, int);
-extern int jacobiStep (double*, double*, double*, double*, int, int);
-extern int laplaceStep (double*, double*, int, int);
-#endif
-
-#ifndef ASM
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
-#endif
 
 void print1DColumna(double matrix[], int cant_elems) {
 	int i;
@@ -70,26 +62,20 @@ double normaVector(double matriz[], int cant_elems) {
 }
 
 void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
-	#ifdef ASM
-		laplaceStep(res, phi, max_i, max_j);
-	#endif
-	
-	// promedio los 4 vecinos (estos tienen los 4 vecinos)
 	int i, j;
 	for(i = 1; i < max_i - 1; i++) {
 		for(j = 1; j < max_j - 1; j++) {
-			res[indice(i , j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
+			int posactual = indice(i , j, max_j);
+			res[posactual] = (phi[posactual - 1] + phi[posactual + 1] + phi[posactual - max_j] + phi[posactual + max_j]) / 4.0;
 		}
 	}
 	
-	// bordes izquierdo y derecho
 	for(i = 1; i < max_i - 1; i++) {
 		res[indice(i, 0, max_j)] = res[indice(i, 1, max_j)];
 		res[indice(i, max_j-1, max_j)] = res[indice(i, max_j-2, max_j)]; 
 	}
 	
-	// bordes inferior y superior
-	for(j = 0; j < max_j; j++) {
+	for(j = 0; j < max_i; j++) {
 		res[indice(0, j, max_j)] = res[indice(1, j, max_j)];
 		res[indice(max_i-1, j, max_j)] = res[indice(max_i-2, j, max_j)]; 
 	}
@@ -107,7 +93,7 @@ void obtenerLaplace(double* res,
 					int max_i, 
 					int max_j) {
 	int i;
-	for(i = 0; i < max_i * max_j; i++) {
+	for(i = 0; i < max_i*max_j; i++) {
 		res[i] = (anodov + catodov) / 2.0;
 	}
 	
@@ -116,18 +102,17 @@ void obtenerLaplace(double* res,
 	res[posanodo] = anodov;
 	res[poscatodo] = catodov;
 	
-	double *aux = malloc(max_i * max_j * sizeof(double));
+	double aux[max_i][max_j];
 	int corridas;
 	for(corridas = 0; corridas < 750; corridas++) {		
-		pasoLaplace((double*) aux, res, max_i, max_j);
-		aux[posanodo] = anodov;
-		aux[poscatodo] = catodov;
+		pasoLaplace((double*) aux, res, max_i, max_j),
+		aux[anodoi][anodoj] = anodov;
+		aux[catodoi][catodoj] = catodov;
 		
-		pasoLaplace(res, (double*) aux, max_i, max_j);
+		pasoLaplace(res,(double*) aux, max_i, max_j),
 		res[posanodo] = anodov;
 		res[poscatodo] = catodov;
 	}
-	free(aux);
 	return;
 }
 
@@ -216,8 +201,7 @@ void jacobiStepOptimized(double* Tn_sig,
 	
 	int i, j;
 	
-	
-	#ifndef ASM
+	// los que tienen los 4 vecinos
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
 			int s = indice(i, j, max_j);
@@ -229,18 +213,13 @@ void jacobiStepOptimized(double* Tn_sig,
 			Tn_sig[s] = (B[s] - sum) / A[indice(4, s, max_i*max_j)];
 		}
 	}
-	#endif
-	
-	#ifdef ASM
-		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
-	#endif
 	
 	// bordes inferior y superior
 	for (j = 1; j < max_j - 1; j++) {
 		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
 		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
 	}
-	
+
 	// bordes izquierdo y derecho	
 	for (i = 0; i < max_i; i++) {
 		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];

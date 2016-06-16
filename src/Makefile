@@ -8,7 +8,7 @@ BIN = jacobi-optimizado
 BIN_DIR = 
 
 OBJS = jacobi-optimizado.o indice.o \
-			jacobiStep.o
+			jacobiStep.o laplaceStep.o
 
 .PHONY: all clean
 
