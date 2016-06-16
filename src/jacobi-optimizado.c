@@ -70,9 +70,9 @@ double normaVector(double matriz[], int cant_elems) {
 }
 
 void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
-	#ifdef ASM
-		laplaceStep(res, phi, max_i, max_j);
-	#endif
+	//#ifdef ASM
+	//	laplaceStep(res, phi, max_i, max_j);
+	//#endif
 	
 	// promedio los 4 vecinos (estos tienen los 4 vecinos)
 	int i, j;
@@ -229,17 +229,17 @@ void jacobiStepOptimized(double* Tn_sig,
 			Tn_sig[s] = (B[s] - sum) / A[indice(4, s, max_i*max_j)];
 		}
 	}
-	#endif
-	
-	#ifdef ASM
-		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
-	#endif
 	
 	// bordes inferior y superior
 	for (j = 1; j < max_j - 1; j++) {
 		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
 		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
 	}
+	#endif
+	
+	#ifdef ASM
+		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
+	#endif
 	
 	// bordes izquierdo y derecho	
 	for (i = 0; i < max_i; i++) {

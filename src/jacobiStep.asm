@@ -45,6 +45,7 @@ jacobiStep:
 	push r14
 	push r15
 	
+	mov B, rdx
 	mov i, max_i ; esto seguro esta mal
 	sub i, 2
 	mov s, max_j
@@ -118,12 +119,21 @@ jacobiStep:
 		cmp i, 0
 		jne loop_i
 	
-	;~ mov fila2, Tn_sig
-	;~ mov fila1, Tn_sig
-	;~ shl max_j, 3
-	;~ add fila1, max_j
-	;~ shr max_j, 3
-	;~ call copiarfila
+	mov fila2, Tn_sig
+	mov fila1, Tn_sig
+	shl max_j, 3
+	add fila1, max_j
+	shr max_j, 3
+	call copiarfila
+	
+	mov fila2, Tn_sig
+	add fila2, max_ij
+	shl max_j, 3
+	sub fila2, max_j
+	mov fila1, fila2
+	sub fila1, max_j
+	shr max_j, 3
+	call copiarfila
 	
 	pop r15
 	pop r14
