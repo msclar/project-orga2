@@ -235,17 +235,18 @@ void jacobiStepOptimized(double* Tn_sig,
 		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
 		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
 	}
-	#endif
-	
-	#ifdef ASM
-		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
-	#endif
 	
 	// bordes izquierdo y derecho	
 	for (i = 0; i < max_i; i++) {
 		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
 		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
 	}
+	#endif
+	
+	#ifdef ASM
+		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
+	#endif
+	
 	
 	// temperatura en electrodos
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10); //  h = 10 W / m² K

@@ -27,7 +27,7 @@ copiarfila: ;copia a la fila2 el contenido de la fila1
 	
 	mov j, max_j
 	shr j, 2
-	mov s, 8
+	mov s, 0
 	
 	loop_fila:
 		vmovupd ymm1, [fila1+s]
@@ -38,7 +38,8 @@ copiarfila: ;copia a la fila2 el contenido de la fila1
 		jne loop_fila
 	
 	mov s, max_j
-	sub s, 4
+	shl s, 3
+	sub s, 32
 	vmovupd ymm1, [fila1+s]
 	vmovupd [fila2+s], ymm1
 	ret
@@ -123,7 +124,32 @@ jacobiStep:
 		dec i
 		cmp i, 0
 		jne loop_i
-		
+	
+	mov s, max_j
+	mov i, max_i
+	sub i, 2
+	loop_borde_izq:
+		mov j, [Tn_sig + s + 8]
+		mov [Tn_sig + s], j
+		add s, max_j
+		dec i
+		cmp i, 0
+		jne loop_borde_izq
+	
+	mov s, max_j
+	add s, max_j
+	sub s, 16
+	mov i, max_i
+	sub i, 2
+	loop_borde_der:
+		mov j, [Tn_sig + s]
+		mov [Tn_sig + s + 8], j
+		add s, max_j
+		dec i
+		cmp i, 0
+		jne loop_borde_der
+	
+	
 	mov fila2, Tn_sig
 	mov fila1, Tn_sig
 	add fila1, max_j
