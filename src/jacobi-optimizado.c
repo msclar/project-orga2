@@ -214,10 +214,10 @@ void jacobiStepOptimized(double* Tn_sig,
 				int max_j) {
 	// X_i^(iter+1) = (b_i - sum (j != i) a_ij * X_j^iter	
 	
-	int i, j;
-	
-	
+	int i;
+	int j;
 	#ifndef ASM
+	
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
 			int s = indice(i, j, max_j);
@@ -231,22 +231,22 @@ void jacobiStepOptimized(double* Tn_sig,
 	}
 	
 	// bordes inferior y superior
-	for (j = 1; j < max_j - 1; j++) {
-		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
-		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
-	}
 	
-	// bordes izquierdo y derecho	
-	for (i = 0; i < max_i; i++) {
-		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
-		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
-	}
 	#endif
 	
 	#ifdef ASM
 		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
 	#endif
 	
+	// bordes izquierdo y derecho	
+	for (i = 0; i < max_i; i++) {
+		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
+		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
+	}
+	for (j = 1; j < max_j - 1; j++) {
+		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
+		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
+	}
 	
 	// temperatura en electrodos
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10); //  h = 10 W / m² K
@@ -356,7 +356,7 @@ int main( int argc, char** argv ) {
 
 	// resolucion por Jacobi
 	int n;
-	for (n = 0; n < 3200; n++) {
+	for (n = 0; n < 320000; n++) {
 		double* TIndAct = TIndPhiZero;
 		if(n % 4000 < 40) TIndAct = TInd;
 			
