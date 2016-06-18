@@ -70,17 +70,19 @@ double normaVector(double matriz[], int cant_elems) {
 }
 
 void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
-	//#ifdef ASM
-	//	laplaceStep(res, phi, max_i, max_j);
-	//#endif
+	#ifdef ASM
+		laplaceStep(res, phi, max_i, max_j);
+	#endif
 	
-	// promedio los 4 vecinos (estos tienen los 4 vecinos)
 	int i, j;
+	#ifndef ASM
+	// promedio los 4 vecinos (estos tienen los 4 vecinos)
 	for(i = 1; i < max_i - 1; i++) {
 		for(j = 1; j < max_j - 1; j++) {
 			res[indice(i , j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
 		}
 	}
+	#endif
 	
 	// bordes izquierdo y derecho
 	for(i = 1; i < max_i - 1; i++) {
