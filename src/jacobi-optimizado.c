@@ -2,26 +2,18 @@
 #include <stdlib.h>
 #include <math.h>
 #define EPS 0.000001
-// inicializacion de variables
-int C_rho = 3680;
-int rho = 1039;
-int q_ddd = 10347;
-int C_b = 3840;
-int rho_b = 1060;
-double w_b = 0.00715;
-double T_a = 310.15;
-double T_aire = 296;
-
-double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
 
 #ifdef ASM
-extern void jacobiStep (double*, double*, double*, double*, int, int);
-extern void laplaceStep (double*, double*, int, int);
+extern int indice (int, int, int);
+extern int jacobiStep (double*, double*, double*, double*, int, int);
+extern int laplaceStep (double*, double*, int, int);
 #endif
 
+#ifndef ASM
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
+#endif
 
 void print1DColumna(double matrix[], int cant_elems) {
 	int i;
@@ -117,7 +109,7 @@ void obtenerLaplace(double* res,
 	
 	double *aux = malloc(max_i * max_j * sizeof(double));
 	int corridas;
-	for(corridas = 0; corridas < 320000; corridas++) {		
+	for(corridas = 0; corridas < 750; corridas++) {		
 		pasoLaplace((double*) aux, res, max_i, max_j);
 		aux[posanodo] = anodov;
 		aux[poscatodo] = catodov;
@@ -156,7 +148,8 @@ double calcVectorError(double A[],
 					   int catodo_x,
 					   int catodo_y,
 					   int max_i,
-					   int max_j) {
+					   int max_j,
+					   double delta_x) {
 	int i, j;
 	double res[max_i * max_j];
 	for (i = 0; i < max_i; i++) {
@@ -210,7 +203,9 @@ void jacobiStepOptimized(double* Tn_sig,
 				int anodo_x, 
 				int anodo_y,
 				int max_i,
-				int max_j) {
+				int max_j,
+				double delta_x,
+				double T_aire) {
 	// X_i^(iter+1) = (b_i - sum (j != i) a_ij * X_j^iter	
 	
 	int i;
@@ -229,16 +224,7 @@ void jacobiStepOptimized(double* Tn_sig,
 		}
 	}
 	
-	// bordes izquierdo y derecho	
-	for (i = 0; i < max_i; i++) {
-		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
-		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
-	}
 	// bordes inferior y superior
-	for (j = 1; j < max_j - 1; j++) {
-		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
-		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
-	}
 	
 	#endif
 	
@@ -246,6 +232,15 @@ void jacobiStepOptimized(double* Tn_sig,
 		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
 	#endif
 	
+	// bordes izquierdo y derecho	
+	for (i = 0; i < max_i; i++) {
+		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
+		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
+	}
+	for (j = 1; j < max_j - 1; j++) {
+		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
+		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
+	}
 	
 	// temperatura en electrodos
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10); //  h = 10 W / m² K
@@ -269,7 +264,10 @@ void jacobiStepOptimized(double* Tn_sig,
 		- T_aire / (r - 1); 
 }
 
-void calcularTInd(double* phi, double delta_x, double delta_y, double* sigma, double* TInd, int max_i, int max_j){
+void calcularTInd(double* phi, double delta_x, double delta_y, 
+				  double* sigma, double* TInd, int max_i, int max_j,
+				  double w_b, int C_b, int rho_b, int q_ddd, double T_a) {
+					  
 	int i, j;
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {			
@@ -281,7 +279,27 @@ void calcularTInd(double* phi, double delta_x, double delta_y, double* sigma, do
 	}
 }
 
+void updateB (double* B, double* Tn, double* TIndAct, int rho, int C_rho, double delta_t, int max_i, int max_j) {
+	int i;
+	for (i = 0; i < max_i * max_j; i++) {
+		B[i] = - rho * C_rho * Tn[i] / delta_t - TIndAct[i];
+	}
+}
+
 int main( int argc, char** argv ) {
+	// inicializacion de variables
+	int C_rho = 3680;
+	int rho = 1039;
+	int q_ddd = 10347;
+	int C_b = 3840;
+	int rho_b = 1060;
+	double w_b = 0.00715;
+	double T_a = 310.15;
+	double T_aire = 296;
+
+	double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
+
+
 	double *Tn, *Tn_sig, *TInd, *B, *k, *sigma, *phi, *A, *phiZero, *TIndPhiZero;
 	
 	int max_i = 20, max_j = 20;
@@ -328,9 +346,8 @@ int main( int argc, char** argv ) {
 	}
 
 	// calculo de TInd
-	calcularTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j);
-	calcularTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j);
-	
+	calcularTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
+	calcularTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
 	
 	// creacion de la matrix A
 	for (i = 0; i < max_i * max_j * 5; i++) {
@@ -359,19 +376,17 @@ int main( int argc, char** argv ) {
 		double* TIndAct = TIndPhiZero;
 		if(n % 4000 < 40) TIndAct = TInd;
 			
-		for (i = 0; i < max_i * max_j; i++) {
-			B[i] = - rho * C_rho * Tn[i] / delta_t - TIndAct[i];
-		}
+		updateB(B, Tn, TIndAct, rho, C_rho, delta_t, max_i, max_j);
 	
-		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j);
+		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);
 		while (fabs(errorPrevio - errorActual) > EPS) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
-			jacobiStepOptimized(Tn_sig, Tn, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx, max_i, max_j);
-			jacobiStepOptimized(Tn, Tn_sig, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx, max_i, max_j);
+			jacobiStepOptimized(Tn_sig, Tn, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx, max_i, max_j, delta_x, T_aire);
+			jacobiStepOptimized(Tn, Tn_sig, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx, max_i, max_j, delta_x, T_aire);
 
 			errorPrevio = errorActual;
-			errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j);		
+			errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);		
 		}
 		
 	}
