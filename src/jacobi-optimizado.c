@@ -4,16 +4,14 @@
 #define EPS 0.000001
 
 #ifdef ASM
-extern int indice (int, int, int);
-extern int jacobiStep (double*, double*, double*, double*, int, int);
-extern int laplaceStep (double*, double*, int, int);
+extern void jacobiStep (double*, double*, double*, double*, int, int);
+extern void laplaceStep (double*, double*, int, int);
+extern void updateB (double*, double*, double*, double, double, int);
 #endif
 
-#ifndef ASM
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
-#endif
 
 void print1DColumna(double matrix[], int cant_elems) {
 	int i;
@@ -223,24 +221,24 @@ void jacobiStepOptimized(double* Tn_sig,
 			Tn_sig[s] = (B[s] - sum) / A[indice(4, s, max_i*max_j)];
 		}
 	}
-	
+
+	// bordes izquierdo y derecho	
+	for (i = 0; i < max_i; i++) {
+		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
+		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
+	}
+
 	// bordes inferior y superior
-	
+	for (j = 1; j < max_j - 1; j++) {
+		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
+		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
+	}
 	#endif
 	
 	#ifdef ASM
 		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
 	#endif
 	
-	// bordes izquierdo y derecho	
-	for (i = 0; i < max_i; i++) {
-		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
-		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
-	}
-	for (j = 1; j < max_j - 1; j++) {
-		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
-		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
-	}
 	
 	// temperatura en electrodos
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10); //  h = 10 W / m² K
@@ -279,10 +277,10 @@ void calcularTInd(double* phi, double delta_x, double delta_y,
 	}
 }
 
-void updateB (double* B, double* Tn, double* TIndAct, int rho, int C_rho, double delta_t, int max_i, int max_j) {
+void updateB_C (double* B, double* Tn, double* TIndAct, double rho_times_C_rho, double delta_t, int max_ij) {
 	int i;
-	for (i = 0; i < max_i * max_j; i++) {
-		B[i] = - rho * C_rho * Tn[i] / delta_t - TIndAct[i];
+	for (i = 0; i < max_ij; i++) {
+		B[i] = - rho_times_C_rho * Tn[i] / delta_t - TIndAct[i];
 	}
 }
 
@@ -302,7 +300,7 @@ int main( int argc, char** argv ) {
 
 	double *Tn, *Tn_sig, *TInd, *B, *k, *sigma, *phi, *A, *phiZero, *TIndPhiZero;
 	
-	int max_i = 20, max_j = 20;
+	int max_i = 53, max_j = 59;
 	Tn = malloc(max_i * max_j * sizeof(double));
 	TInd = malloc(max_i * max_j * sizeof(double));
 	Tn_sig = malloc(max_i * max_j * sizeof(double));
@@ -372,12 +370,18 @@ int main( int argc, char** argv ) {
 
 	// resolucion por Jacobi
 	int n;
-	for (n = 0; n < 320000; n++) {
+	for (n = 0; n < 100000; n++) {
 		double* TIndAct = TIndPhiZero;
 		if(n % 4000 < 40) TIndAct = TInd;
 			
-		updateB(B, Tn, TIndAct, rho, C_rho, delta_t, max_i, max_j);
-	
+		#ifdef ASM
+			updateB(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);
+		#endif
+		
+		#ifndef ASM
+			updateB_C(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);
+		#endif
+		
 		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);
 		while (fabs(errorPrevio - errorActual) > EPS) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
