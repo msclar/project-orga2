@@ -15,16 +15,13 @@ double T_aire = 296;
 double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
 
 #ifdef ASM
-extern int indice (int, int, int);
-extern int jacobiStep (double*, double*, double*, double*, int, int);
-extern int laplaceStep (double*, double*, int, int);
+extern void jacobiStep (double*, double*, double*, double*, int, int);
+extern void laplaceStep (double*, double*, int, int);
 #endif
 
-#ifndef ASM
 int indice (int i, int j, int max_j) {
 	return i * max_j + j;
 }
-#endif
 
 void print1DColumna(double matrix[], int cant_elems) {
 	int i;
@@ -120,7 +117,7 @@ void obtenerLaplace(double* res,
 	
 	double *aux = malloc(max_i * max_j * sizeof(double));
 	int corridas;
-	for(corridas = 0; corridas < 750; corridas++) {		
+	for(corridas = 0; corridas < 320000; corridas++) {		
 		pasoLaplace((double*) aux, res, max_i, max_j);
 		aux[posanodo] = anodov;
 		aux[poscatodo] = catodov;
@@ -232,7 +229,16 @@ void jacobiStepOptimized(double* Tn_sig,
 		}
 	}
 	
+	// bordes izquierdo y derecho	
+	for (i = 0; i < max_i; i++) {
+		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
+		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
+	}
 	// bordes inferior y superior
+	for (j = 1; j < max_j - 1; j++) {
+		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
+		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
+	}
 	
 	#endif
 	
@@ -240,15 +246,6 @@ void jacobiStepOptimized(double* Tn_sig,
 		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
 	#endif
 	
-	// bordes izquierdo y derecho	
-	for (i = 0; i < max_i; i++) {
-		Tn_sig[indice(i, 0, max_j)] = Tn_sig[indice(i, 1, max_j)];
-		Tn_sig[indice(i, max_j-1, max_j)] = Tn_sig[indice(i, max_j-2, max_j)];
-	}
-	for (j = 1; j < max_j - 1; j++) {
-		Tn_sig[indice(0, j, max_j)] = Tn_sig[indice(1, j, max_j)];
-		Tn_sig[indice(max_i-1, j, max_j)] = Tn_sig[indice(max_i-2, j, max_j)];
-	}
 	
 	// temperatura en electrodos
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10); //  h = 10 W / m² K

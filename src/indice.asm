@@ -1,7 +1,7 @@
 global indice
 section .text
 
-indice:
+indice2:
 	push rbp
 	mov rbp, rsp
 

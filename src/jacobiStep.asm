@@ -111,45 +111,44 @@ jacobiStep:
 		cmp i, 0
 		jne loop_i
 	
-	;~ mov s, max_j
-	;~ mov i, max_i
-	;~ sub i, 2
-	;~ loop_borde_izq:
-		;~ mov j, [Tn_sig + s + 8]
-		;~ mov [Tn_sig + s], j
-		;~ add s, max_j
-		;~ dec i
-		;~ cmp i, 0
-		;~ jne loop_borde_izq
-	;~ 
-	;~ mov s, max_j
-	;~ add s, max_j
-	;~ sub s, 16
-	;~ mov i, max_i
-	;~ sub i, 2
-	;~ loop_borde_der:
-		;~ mov j, [Tn_sig + s]
-		;~ mov [Tn_sig + s + 8], j
-		;~ add s, max_j
-		;~ dec i
-		;~ cmp i, 0
-		;~ jne loop_borde_der
-	;~ 
+	mov s, max_j
+	mov i, max_i
+	sub i, 2
+	loop_borde_izq:
+		mov j, [Tn_sig + s + 8]
+		mov [Tn_sig + s], j
+		add s, max_j
+		dec i
+		cmp i, 0
+		jne loop_borde_izq
 	
-	;~ mov fila2, Tn_sig
-	;~ mov fila1, Tn_sig
-	;~ add fila1, max_j
-	;~ shr max_j, 3
-	;~ call copiarfila
-	;~ 
-	;~ mov fila2, Tn_sig
-	;~ add fila2, max_ij
-	;~ shl max_j, 3
-	;~ sub fila2, max_j
-	;~ mov fila1, fila2
-	;~ sub fila1, max_j
-	;~ shr max_j, 3
-	;~ call copiarfila
+	mov s, max_j
+	add s, max_j
+	sub s, 16
+	mov i, max_i
+	sub i, 2
+	loop_borde_der:
+		mov j, [Tn_sig + s]
+		mov [Tn_sig + s + 8], j
+		add s, max_j
+		dec i
+		cmp i, 0
+		jne loop_borde_der
+	
+	mov fila2, Tn_sig
+	mov fila1, Tn_sig
+	add fila1, max_j
+	shr max_j, 3
+	call copiarfila
+	
+	mov fila2, Tn_sig
+	add fila2, max_ij
+	shl max_j, 3
+	sub fila2, max_j
+	mov fila1, fila2
+	sub fila1, max_j
+	shr max_j, 3
+	call copiarfila
 	
 	pop r15
 	pop r14
