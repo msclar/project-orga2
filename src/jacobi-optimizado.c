@@ -4,9 +4,11 @@
 #define EPS 0.000001
 
 #ifdef ASM
-extern void jacobiStep (double*, double*, double*, double*, int, int);
-extern void laplaceStep (double*, double*, int, int);
-extern void updateB (double*, double*, double*, double, double, int);
+	extern void jacobiStep (double*, double*, double*, double*, int, int);
+	extern void laplaceStep (double*, double*, int, int);
+	extern void updateB (double*, double*, double*, double, double, int);
+	extern void fillWithZeros (double*, int);
+	extern void calculateVectorError (double*, double*, double*, double*, int, int);
 #endif
 
 int indice (int i, int j, int max_j) {
@@ -141,6 +143,7 @@ double calcVectorError(double A[],
 					   double Tn[], 
 					   double B[],
 					   double k[],
+					   double res[],
 					   int anodo_x,
 					   int anodo_y,
 					   int catodo_x,
@@ -149,7 +152,14 @@ double calcVectorError(double A[],
 					   int max_j,
 					   double delta_x) {
 	int i, j;
-	double res[max_i * max_j];
+	
+	// me parece que no hace falta inicializar todo: preguntar!
+	#ifdef ASMX
+		fillWithZeros(res, max_i * max_j);
+		calculateVectorError(A, Tn, B, res, max_i, max_j);
+		// TODAVIA FALTA ARREGLAR ESTO: los bordes estan mal
+	#endif
+	
 	for (i = 0; i < max_i; i++) {
 		for (j = 0; j < max_j; j++) {
 			res[indice(i, j, max_j)] = 0;
@@ -163,6 +173,8 @@ double calcVectorError(double A[],
 			res[s] = calcularPosicion(i, j, A, Tn, B, max_i, max_j);
 		}
 	}
+	
+	// FALTAN BORDES EXTERIORES!!!
 	
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10);
 	res[indice(catodo_x, catodo_y, max_j)] = 
@@ -185,9 +197,9 @@ double calcVectorError(double A[],
 }
 
 /* CONVENCION para los 5 vecinos
- *   1
- * 0 4 2
- *   3
+ *   0
+ * 1 4 3
+ *   2
  */
 
 void jacobiStepOptimized(double* Tn_sig, 
@@ -368,6 +380,8 @@ int main( int argc, char** argv ) {
 		}
 	}
 
+	double *auxVectorError = malloc(max_i * max_j * sizeof(double));
+
 	// resolucion por Jacobi
 	int n;
 	for (n = 0; n < 100000; n++) {
@@ -382,7 +396,7 @@ int main( int argc, char** argv ) {
 			updateB_C(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);
 		#endif
 		
-		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);
+		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, auxVectorError, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);
 		while (fabs(errorPrevio - errorActual) > EPS) {
 			// siempre empieza estando la info bien en Tn, Tn_sig es auxiliar
 			// por eso, pongamos una cantidad de iteraciones *par*
@@ -390,7 +404,7 @@ int main( int argc, char** argv ) {
 			jacobiStepOptimized(Tn, Tn_sig, B, TIndAct, A, k, catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx, max_i, max_j, delta_x, T_aire);
 
 			errorPrevio = errorActual;
-			errorActual = calcVectorError(A, Tn, B, k, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);		
+			errorActual = calcVectorError(A, Tn, B, k, auxVectorError, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);		
 		}
 		
 	}
