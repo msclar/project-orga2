@@ -9,6 +9,7 @@
 	extern void updateB (double*, double*, double*, double, double, int);
 	extern void fillWithZeros (double*, int);
 	extern void calculateVectorError (double*, double*, double*, double*, int, int);
+	extern void createA (double*, double*, double, double, double, int, int);
 #endif
 
 int indice (int i, int j, int max_j) {
@@ -276,9 +277,9 @@ void jacobiStepOptimized(double* Tn_sig,
 		- T_aire / (r - 1); 
 }
 
-void calcularTInd(double* phi, double delta_x, double delta_y, 
-				  double* sigma, double* TInd, int max_i, int max_j,
-				  double w_b, int C_b, int rho_b, int q_ddd, double T_a) {
+void calculateTInd(double* phi, double delta_x, double delta_y, 
+				   double* sigma, double* TInd, int max_i, int max_j,
+				   double w_b, int C_b, int rho_b, int q_ddd, double T_a) {
 					  
 	int i, j;
 	for (i = 1; i < max_i - 1; i++) {
@@ -295,6 +296,33 @@ void updateB_C (double* B, double* Tn, double* TIndAct, double rho_times_C_rho, 
 	int i;
 	for (i = 0; i < max_ij; i++) {
 		B[i] = - rho_times_C_rho * Tn[i] / delta_t - TIndAct[i];
+	}
+}
+
+void createA_C (double* A, double* k, double indep_term, double delta_x, double delta_y, int max_i, int max_j) {
+	// indep_term = - w_b * C_b * rho_b - rho * C_rho / delta_t
+	// ya comenzamos con el assembler: ver createA.asm
+
+	int i, j;
+	// creacion de la matriz A
+	for (i = 0; i < max_i * max_j * 5; i++) {
+		A[i] = 0;
+	}
+	
+	// calculo de A
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {
+			int s = indice(i, j, max_j);
+			
+			double derivada_k_x = (k[indice(i+1, j, max_j)] - k[indice(i-1, j, max_j)]) / (2 * delta_x);
+			double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
+			
+			A[indice(4, s, max_i*max_j)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) + indep_term;
+			A[indice(2, s, max_i*max_j)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
+			A[indice(0, s, max_i*max_j)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
+			A[indice(3, s, max_i*max_j)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
+			A[indice(1, s, max_i*max_j)] = - derivada_k_y / (2 * delta_y) + k[indice(i, j-1, max_j)] / (delta_y * delta_y);
+		}
 	}
 }
 
@@ -341,6 +369,7 @@ int main( int argc, char** argv ) {
 	
 	int i, j;
 	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
+	
 	FILE* phi_file = fopen("phi.out", "w");
 	print2DMatlab(phi, max_i, max_j, phi_file);
 	
@@ -358,30 +387,11 @@ int main( int argc, char** argv ) {
 	}
 
 	// calculo de TInd
-	calcularTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
-	calcularTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
+	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
+	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
 	
-	// creacion de la matrix A
-	for (i = 0; i < max_i * max_j * 5; i++) {
-		A[i] = 0;
-	}
+	createA_C (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
 	
-	// calculo de A
-	for (i = 1; i < max_i - 1; i++) {
-		for (j = 1; j < max_j - 1; j++) {
-			int s = indice(i, j, max_j);
-			
-			double derivada_k_x = (k[indice(i+1, j, max_j)] - k[indice(i-1, j, max_j)]) / (2 * delta_x);
-			double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
-			
-			A[indice(4, s, max_i*max_j)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) - w_b * C_b * rho_b - rho * C_rho / delta_t;
-			A[indice(2, s, max_i*max_j)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
-			A[indice(0, s, max_i*max_j)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
-			A[indice(3, s, max_i*max_j)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
-			A[indice(1, s, max_i*max_j)] = - derivada_k_y / (2 * delta_y) + k[indice(i, j-1, max_j)] / (delta_y * delta_y);
-		}
-	}
-
 	double *auxVectorError = malloc(max_i * max_j * sizeof(double));
 
 	// resolucion por Jacobi
