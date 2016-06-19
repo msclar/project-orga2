@@ -153,19 +153,12 @@ double calcVectorError(double A[],
 					   double delta_x) {
 	int i, j;
 	
-	// me parece que no hace falta inicializar todo: preguntar!
-	#ifdef ASMX
-		fillWithZeros(res, max_i * max_j);
+	#ifdef ASM
+		//fillWithZeros(res, max_i * max_j);
 		calculateVectorError(A, Tn, B, res, max_i, max_j);
-		// TODAVIA FALTA ARREGLAR ESTO: los bordes estan mal
 	#endif
-	
-	for (i = 0; i < max_i; i++) {
-		for (j = 0; j < max_j; j++) {
-			res[indice(i, j, max_j)] = 0;
-		}
-	}
 
+	#ifndef ASM
 	// calculo A * Tn - B
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
@@ -173,9 +166,18 @@ double calcVectorError(double A[],
 			res[s] = calcularPosicion(i, j, A, Tn, B, max_i, max_j);
 		}
 	}
+	#endif
+
+	for (i = 0; i < max_i; i++) {
+		res[indice(i, 0, max_j)] = 0.0;
+		res[indice(i, max_j-1, max_j)] = 0.0;
+	}
 	
-	// FALTAN BORDES EXTERIORES!!!
-	
+	for (j = 0; j < max_j; j++) {
+		res[indice(0, j, max_j)] = 0.0;
+		res[indice(max_i-1, j, max_j)] = 0.0;
+	}
+
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10);
 	res[indice(catodo_x, catodo_y, max_j)] = 
 	r * (

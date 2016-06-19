@@ -11,6 +11,8 @@ calculateVectorError:
 	mov rbp, rsp
 	push r12
 	push r13
+	push r14
+	push r15
 	
 	%define A     rdi
 	%define Tn    rsi
@@ -99,6 +101,8 @@ calculateVectorError:
 		dec i
 		jnz loop_i
 
+	pop r15
+	pop r14
 	pop r13
 	pop r12
 	pop rbp
