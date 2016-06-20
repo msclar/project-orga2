@@ -315,13 +315,14 @@ void createA_C (double* A, double* k, double indep_term, double delta_x, double 
 			int s = indice(i, j, max_j);
 			
 			double derivada_k_x = (k[indice(i+1, j, max_j)] - k[indice(i-1, j, max_j)]) / (2 * delta_x);
-			double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
-			
-			A[indice(4, s, max_i*max_j)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) + indep_term;
-			A[indice(2, s, max_i*max_j)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
 			A[indice(0, s, max_i*max_j)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
-			A[indice(3, s, max_i*max_j)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
+			A[indice(2, s, max_i*max_j)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
+
+			double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
 			A[indice(1, s, max_i*max_j)] = - derivada_k_y / (2 * delta_y) + k[indice(i, j-1, max_j)] / (delta_y * delta_y);
+			A[indice(3, s, max_i*max_j)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
+
+			A[indice(4, s, max_i*max_j)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) + indep_term;
 		}
 	}
 }
@@ -343,6 +344,7 @@ int main( int argc, char** argv ) {
 	double *Tn, *Tn_sig, *TInd, *B, *k, *sigma, *phi, *A, *phiZero, *TIndPhiZero;
 	
 	int max_i = 53, max_j = 59;
+	
 	Tn = malloc(max_i * max_j * sizeof(double));
 	TInd = malloc(max_i * max_j * sizeof(double));
 	Tn_sig = malloc(max_i * max_j * sizeof(double));
@@ -390,7 +392,27 @@ int main( int argc, char** argv ) {
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
 	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
 	
-	createA_C (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
+	#ifdef ASM
+		createA (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
+		
+		// createA analiza los bordes tambien por simplicidad, y ahora los retorno a cero
+		int idx;
+		for (idx = 0; idx < 5; idx++) {
+			for (i = 1; i < max_i - 1; i++) {
+				A[indice(idx, indice(i, 0, max_j), max_i*max_j)] = 0.0;
+				A[indice(idx, indice(i, max_j-1, max_j), max_i*max_j)] = 0.0;
+			}
+			
+			for (j = 0; j < max_j; j++) {
+				A[indice(idx, indice(0, j, max_j), max_i*max_j)] = 0.0;
+				A[indice(idx, indice(max_i-1, j, max_j), max_i*max_j)] = 0.0;
+			}
+		}
+	#endif
+	
+	#ifndef ASM
+		createA_C (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
+	#endif
 	
 	double *auxVectorError = malloc(max_i * max_j * sizeof(double));
 
