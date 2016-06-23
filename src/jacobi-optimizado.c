@@ -10,6 +10,7 @@
 	extern void fillWithZeros (double*, int);
 	extern void calculateVectorError (double*, double*, double*, double*, int, int);
 	extern void createA (double*, double*, double, double, double, int, int);
+	extern void calculateTInd (double*, double, double, double*, double*, int, int, double);
 #endif
 
 int indice (int i, int j, int max_j) {
@@ -221,10 +222,10 @@ void jacobiStepOptimized(double* Tn_sig,
 				double T_aire) {
 	// X_i^(iter+1) = (b_i - sum (j != i) a_ij * X_j^iter	
 	
-	int i;
-	int j;
 	#ifndef ASM
 	
+	int i;
+	int j;
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
 			int s = indice(i, j, max_j);
@@ -277,20 +278,21 @@ void jacobiStepOptimized(double* Tn_sig,
 		- T_aire / (r - 1); 
 }
 
+#ifndef ASM
 void calculateTInd(double* phi, double delta_x, double delta_y, 
 				   double* sigma, double* TInd, int max_i, int max_j,
-				   double w_b, int C_b, int rho_b, int q_ddd, double T_a) {
-					  
+				   double resto) {
 	int i, j;
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {			
 			double deriv_phi_x = (phi[indice(i+1, j, max_j)] - phi[indice(i-1, j, max_j)]) / (2 * delta_x);
 			double deriv_phi_y = (phi[indice(i, j+1, max_j)] - phi[indice(i, j-1, max_j)]) / (2 * delta_y);
 			double gradient_phi_quad = deriv_phi_x * deriv_phi_x + deriv_phi_y * deriv_phi_y;
-			TInd[indice(i, j, max_j)] = w_b * C_b * rho_b * T_a + q_ddd + sigma[indice(i, j, max_j)] * gradient_phi_quad;
+			TInd[indice(i, j, max_j)] = resto + sigma[indice(i, j, max_j)] * gradient_phi_quad;
 		}
 	}
 }
+#endif
 
 void updateB_C (double* B, double* Tn, double* TIndAct, double rho_times_C_rho, double delta_t, int max_ij) {
 	int i;
@@ -389,8 +391,8 @@ int main( int argc, char** argv ) {
 	}
 
 	// calculo de TInd
-	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
-	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b, C_b, rho_b, q_ddd, T_a);
+	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
+	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
 	
 	#ifdef ASM
 		createA (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
