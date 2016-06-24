@@ -1,3 +1,5 @@
+%include "copiarFila.asm"
+
 section .data
     format: db "num: %d" , 10, 0
     zeros: dq 0.0, 0.0
@@ -20,7 +22,8 @@ calculateVectorError:
 	%define res   rcx
 	%define max_i r8
 	%define max_j r9
-
+	mov r15, res
+	
 	%define s r10
 	mov s, max_j
 	inc s
@@ -100,6 +103,9 @@ calculateVectorError:
 		
 		dec i
 		jnz loop_i
+	
+	mov rdi, r15
+	call borrarbordes
 
 	pop r15
 	pop r14

@@ -153,7 +153,6 @@ double calcVectorError(double A[],
 					   int max_i,
 					   int max_j,
 					   double delta_x) {
-	int i, j;
 	
 	#ifdef ASM
 		//fillWithZeros(res, max_i * max_j);
@@ -161,6 +160,7 @@ double calcVectorError(double A[],
 	#endif
 
 	#ifndef ASM
+	int i, j;
 	// calculo A * Tn - B
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
@@ -168,8 +168,6 @@ double calcVectorError(double A[],
 			res[s] = calcularPosicion(i, j, A, Tn, B, max_i, max_j);
 		}
 	}
-	#endif
-
 	for (i = 0; i < max_i; i++) {
 		res[indice(i, 0, max_j)] = 0.0;
 		res[indice(i, max_j-1, max_j)] = 0.0;
@@ -179,7 +177,8 @@ double calcVectorError(double A[],
 		res[indice(0, j, max_j)] = 0.0;
 		res[indice(max_i-1, j, max_j)] = 0.0;
 	}
-
+	#endif
+	
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10);
 	res[indice(catodo_x, catodo_y, max_j)] = 
 	r * (
