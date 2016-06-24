@@ -11,6 +11,7 @@
 	extern void calculateVectorError (double*, double*, double*, double*, int, int);
 	extern void createA (double*, double*, double, double, double, int, int);
 	extern void calculateTInd (double*, double, double, double*, double*, int, int, double);
+	extern double vectorNorm(double*, int);
 #endif
 
 int indice (int i, int j, int max_j) {
@@ -202,7 +203,16 @@ double calcVectorError(double A[],
 			res[indice(anodo_x, anodo_y-1, max_j)]
 		) / (4 * (r - 1));
 
-	return normaVector(res, max_i * max_j);
+	double norma;
+
+	#ifndef ASM
+		norma = normaVector(res, max_i * max_j);
+	#endif
+	
+	#ifdef ASM
+		norma = vectorNorm(res, max_i * max_j);
+	#endif
+	return norma;
 }
 
 /* CONVENCION para los 5 vecinos
