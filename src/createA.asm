@@ -1,3 +1,5 @@
+%include "copiarFila.asm"
+
 section .data
     format: db "num: %d" , 10, 0
     fours: dq 4.0, 4.0, 4.0, 4.0
@@ -10,22 +12,28 @@ section .text
 createA:
 	push rbp
 	mov rbp, rsp
+	push r12
+	push r13
+	push r14
+	push r15
 
 	%define A     rdi
 	%define k     rsi
-	%define max_i rdx
+	%define max_i r8
 	%define max_j rcx
+	mov r12, A
+	mov max_i, rdx
 	
 	%define indep_term xmm0
 	%define delta_x    xmm1 
 	%define delta_y    xmm2
 
-	%define s r8
+	%define s r15
 	mov s, max_j
 	inc s
 	shl s, 3 ; s = max_j + 1 (*8 bytes)
 
-	%define max_ij r9
+	%define max_ij r11
 	mov rax, max_j
 	mul max_i ; aqui max_i se destruye porque estaba en rdx, pero no lo uso mas
 	mov max_ij, rax ; max_ij = max_i * max_j
@@ -139,6 +147,20 @@ createA:
 		
 		dec i
 		jnz loop_i
-
+	
+	mov A, r12
+	mov rsi, 5
+	
+	loop_bordes:
+		mov r9, max_j
+		call borrarbordes
+		add A, max_ij
+		dec rsi
+		jnz loop_bordes
+	
+	pop r15
+	pop r14
+	pop r13
+	pop r12
 	pop rbp
 ret

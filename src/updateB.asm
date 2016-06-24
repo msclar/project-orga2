@@ -21,7 +21,7 @@ updateB:
 	%define delta_t         xmm1
 	%define max_ij          rcx
 
-	vmovupd xmm2, [zeros] ; xmm2 = 0
+	vxorpd xmm2, xmm2 ; xmm2 = 0
 	vsubpd xmm2, rho_times_C_rho
 	vmovapd rho_times_C_rho, xmm2 ; rho_times_C_rho = - rho * C_rho
 	
