@@ -9,7 +9,7 @@ BIN_DIR =
 
 OBJS = jacobi-optimizado.o fillWithZeros.o calculateVectorError.o \
 			jacobiStep.o laplaceStep.o updateB.o createA.o \
-			calculateTInd.o
+			calculateTInd.o vectorNorm.o
 
 .PHONY: all clean
 
