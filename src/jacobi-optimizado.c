@@ -65,16 +65,14 @@ void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 		laplaceStep(res, phi, max_i, max_j);
 	#endif
 	
-	int i, j;
 	#ifndef ASM
+	int i, j;
 	// promedio los 4 vecinos (estos tienen los 4 vecinos)
 	for(i = 1; i < max_i - 1; i++) {
 		for(j = 1; j < max_j - 1; j++) {
 			res[indice(i , j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
 		}
 	}
-	#endif
-	
 	// bordes izquierdo y derecho
 	for(i = 1; i < max_i - 1; i++) {
 		res[indice(i, 0, max_j)] = res[indice(i, 1, max_j)];
@@ -86,6 +84,8 @@ void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 		res[indice(0, j, max_j)] = res[indice(1, j, max_j)];
 		res[indice(max_i-1, j, max_j)] = res[indice(max_i-2, j, max_j)]; 
 	}
+	#endif
+	
 	
 	return;
 }
@@ -392,7 +392,9 @@ int main( int argc, char** argv ) {
 
 	// calculo de TInd
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
+	printDbg2DMatlab(TInd, max_i, max_j);
 	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
+	printDbg2DMatlab(TIndPhiZero, max_i, max_j);
 	
 	#ifdef ASM
 		createA (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
@@ -419,10 +421,13 @@ int main( int argc, char** argv ) {
 	double *auxVectorError = malloc(max_i * max_j * sizeof(double));
 
 	// resolucion por Jacobi
-	int n;
+	int n; // n es la cantidad de delta_t corridos (el tiempo real es n * delta_t * 2)
 	for (n = 0; n < 100000; n++) {
+		
+		// Para simular los pulsos electricos
 		double* TIndAct = TIndPhiZero;
-		if(n % 4000 < 40) TIndAct = TInd;
+		if(n % 4000 < 40) 
+			TIndAct = TInd;
 			
 		#ifdef ASM
 			updateB(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);

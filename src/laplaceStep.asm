@@ -2,6 +2,8 @@
 ;Preservar RBX, R12, R13, R14 y R15
 ;Retornar el resultado en RAX o XMM0
 ;No romper la pila
+%include "copiarFila.asm"
+
 section .data
     format: db "num: %d" , 10, 0
     mask4: DQ 4.0, 4.0, 4.0, 4.0
@@ -15,15 +17,18 @@ laplaceStep:
 	mov rbp, rsp
 	push r12
 	push r13
+	push r14
+	push r15
 	
 	%define res rdi
 	%define phi rsi
-	%define max_i rdx
+	%define max_i r8
 	%define max_j rcx
 	%define s r10
 	%define max_ij r11 ; por ahora no lo uso para nada
 	%define i r12
 
+	mov max_i, rdx
 	mov s, max_j
 	inc s ; s = max_j + 1 es la primer posicion de la matriz a analizar
 	shl s, 3 ; porque cada posicion es de ocho bytes (64 bits)
@@ -70,10 +75,11 @@ laplaceStep:
 		cmp i, 0
 		jne loop_i
 
-	
+	mov r9, max_j
+	call copiarbordes
 	; fin choreo
-
-		
+	pop r15
+	pop r14
 	pop r13
 	pop r12
 	pop rbp
