@@ -41,12 +41,11 @@ vectorNorm:
 		jnz loop_i 
 	
 	
-	%define unpacked_accum xmm1 ; guardaba i, pero ya no lo uso
+	%define unpacked_accum xmm1
 	
 	; desempaqueto el acumulador
 	vextractf128 unpacked_accum, accum, 0x01 ; extraigo los 128 bits superiores, los inferiores estan en xmm0 (alli esta accum)
 	addpd unpacked_accum, xmm0
-	haddpd unpacked_accum, unpacked_accum
 	haddpd unpacked_accum, unpacked_accum
 	
 	; analizo los elementos [first_elem_not_analyzed, length)
