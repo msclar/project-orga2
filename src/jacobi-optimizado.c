@@ -392,26 +392,12 @@ int main( int argc, char** argv ) {
 
 	// calculo de TInd
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
-	printDbg2DMatlab(TInd, max_i, max_j);
+	//printDbg2DMatlab(TInd, max_i, max_j);
 	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
-	printDbg2DMatlab(TIndPhiZero, max_i, max_j);
+	//printDbg2DMatlab(TIndPhiZero, max_i, max_j);
 	
 	#ifdef ASM
 		createA (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
-		
-		// createA analiza los bordes tambien por simplicidad, y ahora los retorno a cero
-		int idx;
-		for (idx = 0; idx < 5; idx++) {
-			for (i = 1; i < max_i - 1; i++) {
-				A[indice(idx, indice(i, 0, max_j), max_i*max_j)] = 0.0;
-				A[indice(idx, indice(i, max_j-1, max_j), max_i*max_j)] = 0.0;
-			}
-			
-			for (j = 0; j < max_j; j++) {
-				A[indice(idx, indice(0, j, max_j), max_i*max_j)] = 0.0;
-				A[indice(idx, indice(max_i-1, j, max_j), max_i*max_j)] = 0.0;
-			}
-		}
 	#endif
 	
 	#ifndef ASM
