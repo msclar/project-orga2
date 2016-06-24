@@ -1,32 +1,30 @@
-;Una funcion para cumplir con la Convencion C debe:
-;Preservar RBX, R12, R13, R14 y R15
-;Retornar el resultado en RAX o XMM0
-;No romper la pila
 section .data
     format: db "num: %d" , 10, 0
     zeros: dq 0.0, 0.0
 
 section .text
-	global fillWithZeros
+	global fillWithConstant
     extern printf
 
-fillWithZeros:
+fillWithConstant:
 	push rbp
 	mov rbp, rsp
 	
-	%define matrix          rdi
-	%define max_ij          rsi
-
-	%define all_zeros ymm0
-	vmovupd xmm0, [zeros]
-	vinsertf128 all_zeros, all_zeros, xmm0, 1
+	%define matrix   rdi
+	%define max_ij   rsi
+	
+	%define constant xmm0
+	movddup constant, constant
+	
+	%define mask_constant ymm0
+	vinsertf128 mask_constant, mask_constant, constant, 1
 
 	%define i r8
 	mov i, max_ij
 	sub i, 4 ; i = max_ij - 4
 	
 	; proceso los ultimos 4 elementos
-	vmovupd [matrix + 8*i], all_zeros
+	vmovupd [matrix + 8*i], mask_constant
 	
 	; redondeo para abajo a un multiplo de 4 (idem updateB.asm)
 	dec i
@@ -37,7 +35,7 @@ fillWithZeros:
 	loop_i:
 		sub i, 32 ; saco los 4 elementos ya analizados (*8 bytes)
 		
-		vmovupd [matrix + i], all_zeros
+		vmovupd [matrix + i], mask_constant
 		jnz loop_i 
 	
 	pop rbp

@@ -7,7 +7,7 @@ ASMFLAGS = -felf64 -g -F dwarf
 BIN = jacobi-optimizado
 BIN_DIR = 
 
-OBJS = jacobi-optimizado.o fillWithZeros.o calculateVectorError.o \
+OBJS = jacobi-optimizado.o fillWithConstant.o calculateVectorError.o \
 			jacobiStep.o laplaceStep.o updateB.o createA.o \
 			calculateTInd.o vectorNorm.o
 

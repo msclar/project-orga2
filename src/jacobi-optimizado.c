@@ -7,7 +7,7 @@
 	extern void jacobiStep (double*, double*, double*, double*, int, int);
 	extern void laplaceStep (double*, double*, int, int);
 	extern void updateB (double*, double*, double*, double, double, int);
-	extern void fillWithZeros (double*, int);
+	extern void fillWithConstant (double*, double, int);
 	extern void calculateVectorError (double*, double*, double*, double*, int, int);
 	extern void createA (double*, double*, double, double, double, int, int);
 	extern void calculateTInd (double*, double, double, double*, double*, int, int, double);
@@ -99,10 +99,16 @@ void obtenerLaplace(double* res,
 					double catodov, 
 					int max_i, 
 					int max_j) {
+	#ifndef ASM
 	int i;
 	for(i = 0; i < max_i * max_j; i++) {
 		res[i] = (anodov + catodov) / 2.0;
 	}
+	#endif
+	
+	#ifdef ASM
+		fillWithConstant(res, (anodov + catodov) / 2.0, max_i * max_j);
+	#endif
 	
 	int posanodo = indice(anodoi, anodoj, max_j);
 	int poscatodo = indice(catodoi, catodoj, max_j);
