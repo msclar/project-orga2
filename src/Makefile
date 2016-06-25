@@ -8,8 +8,8 @@ BIN = jacobi-optimizado
 BIN_DIR = 
 
 OBJS = jacobi-optimizado.o fillWithConstant.o calculateVectorError.o \
-			jacobiStep.o laplaceStep.o updateB.o createA.o \
-			calculateTInd.o vectorNorm.o
+       jacobiStep.o laplaceStep.o updateB.o createA.o \
+       calculateTInd.o vectorNorm.o
 
 .PHONY: all clean
 
@@ -17,7 +17,7 @@ $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@ -lm
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	mkdir -p outputtt && $(CC) $(CFLAGS) -c -o $@ $<
 
 %.o: %.asm
 	$(ASM) $(ASMFLAGS) -o $@ $<

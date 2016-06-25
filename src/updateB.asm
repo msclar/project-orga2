@@ -1,14 +1,9 @@
-;Una funcion para cumplir con la Convencion C debe:
-;Preservar RBX, R12, R13, R14 y R15
-;Retornar el resultado en RAX o XMM0
-;No romper la pila
 section .data
-    format: db "num: %d" , 10, 0
+    format: db "num: %d", 10, 0
     zeros: dq 0.0, 0.0
 
 section .text
 	global updateB
-    extern printf
 
 updateB:
 	push rbp

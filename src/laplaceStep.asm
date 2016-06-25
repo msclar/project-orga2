@@ -1,16 +1,11 @@
-;Una funcion para cumplir con la Convencion C debe:
-;Preservar RBX, R12, R13, R14 y R15
-;Retornar el resultado en RAX o XMM0
-;No romper la pila
 %include "copiarFila.asm"
 
 section .data
-    format: db "num: %d" , 10, 0
+    format: db "num: %d", 10, 0
     mask4: DQ 4.0, 4.0, 4.0, 4.0
 
 section .text
 	global laplaceStep
-    extern printf
 
 laplaceStep:
 	push rbp

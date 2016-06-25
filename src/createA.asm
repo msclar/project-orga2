@@ -7,7 +7,6 @@ section .data
 
 section .text
 	global createA
-    extern printf
 
 createA:
 	push rbp

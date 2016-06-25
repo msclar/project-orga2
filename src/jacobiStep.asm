@@ -1,7 +1,3 @@
-;Una funcion para cumplir con la Convencion C debe:
-;Preservar RBX, R12, R13, R14 y R15
-;Retornar el resultado en RAX o XMM0
-;No romper la pila
 %include "copiarFila.asm"
 
 section .data

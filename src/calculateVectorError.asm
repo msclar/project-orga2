@@ -1,12 +1,10 @@
 %include "copiarFila.asm"
 
 section .data
-    format: db "num: %d" , 10, 0
-    zeros: dq 0.0, 0.0
+    format: db "num: %d", 10, 0
 
 section .text
 	global calculateVectorError
-    extern printf
 
 calculateVectorError:
 	push rbp
@@ -58,15 +56,10 @@ calculateVectorError:
 	add r14, max_ij
 	add r14, max_ij ; r14 = 3 * max_ij
 
-
 	sub Tn, max_j ; lo coloco una fila arriba de lo que tendria que estar para las cuentas
 
-	%define all_zeros ymm0
-	vmovupd xmm0, [zeros]
-	vinsertf128 all_zeros, all_zeros, xmm0, 1
-
 	loop_i:
-		vmovapd ymm3, all_zeros
+		vxorpd ymm3, ymm3
 		vsubpd ymm3, [B] ; ymm3 = -B
 	
 		vmovupd ymm2, [Tn] ; cargo el vecino de arriba y los 3 elementos que siguen en Tn
