@@ -11,7 +11,8 @@
 	extern void calculateVectorError (double*, double*, double*, double*, int, int);
 	extern void createA (double*, double*, double, double, double, int, int);
 	extern void calculateTInd (double*, double, double, double*, double*, int, int, double);
-	extern double vectorNorm(double*, int);
+	extern double vectorNorm (double*, int);
+	extern double distanceBetweenVectors (double*, double*, int);
 #endif
 
 int indice (int i, int j, int max_j) {
@@ -29,8 +30,8 @@ void print1DColumna(double matrix[], int cant_elems) {
 void printDbg2DMatlab(double matrix[], int max_i, int max_j) {
 	int i, j;
 	for (i = 0; i < max_i; i++) {
-		for(j = 0; j < max_j; j++) {
-			if(j) printf(" ");
+		for (j = 0; j < max_j; j++) {
+			if (j) printf(" ");
 			printf("%f", matrix[i * max_j + j]);
 		}
 		printf("\n");
@@ -41,8 +42,8 @@ void printDbg2DMatlab(double matrix[], int max_i, int max_j) {
 void print2DMatlab(double matrix[], int max_i, int max_j, FILE* out) {
 	int i, j;
 	for (i = 0; i < max_i; i++) {
-		for(j = 0; j < max_j; j++) {
-			if(j) fprintf(out, " ");
+		for (j = 0; j < max_j; j++) {
+			if (j) fprintf(out, " ");
 			fprintf(out, "%f", matrix[i * max_j + j]);
 		}
 		fprintf(out, "\n");
@@ -69,19 +70,19 @@ void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 	#ifndef ASM
 	int i, j;
 	// promedio los 4 vecinos (estos tienen los 4 vecinos)
-	for(i = 1; i < max_i - 1; i++) {
-		for(j = 1; j < max_j - 1; j++) {
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {
 			res[indice(i , j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
 		}
 	}
 	// bordes izquierdo y derecho
-	for(i = 1; i < max_i - 1; i++) {
+	for (i = 1; i < max_i - 1; i++) {
 		res[indice(i, 0, max_j)] = res[indice(i, 1, max_j)];
 		res[indice(i, max_j-1, max_j)] = res[indice(i, max_j-2, max_j)]; 
 	}
 	
 	// bordes inferior y superior
-	for(j = 0; j < max_j; j++) {
+	for (j = 0; j < max_j; j++) {
 		res[indice(0, j, max_j)] = res[indice(1, j, max_j)];
 		res[indice(max_i-1, j, max_j)] = res[indice(max_i-2, j, max_j)]; 
 	}
@@ -89,6 +90,22 @@ void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 	
 	
 	return;
+}
+
+double calcErrorLaplace(double* actPhi, double* nextPhi, int max_i, int max_j) {
+	double norma = 0.0;
+	#ifdef ASM
+		norma = distanceBetweenVectors(actPhi, nextPhi, max_i * max_j);
+	#endif
+	
+	#ifndef ASM
+	int i;
+	for (i = 0; i < max_i * max_j; i++) {
+		norma += (actPhi[i] - nextPhi[i]) * (actPhi[i] - nextPhi[i]);
+	}
+	norma = sqrt(norma);
+	#endif
+	return norma;
 }
 
 void obtenerLaplace(double* res, 
@@ -102,7 +119,7 @@ void obtenerLaplace(double* res,
 					int max_j) {
 	#ifndef ASM
 	int i;
-	for(i = 0; i < max_i * max_j; i++) {
+	for (i = 0; i < max_i * max_j; i++) {
 		res[i] = (anodov + catodov) / 2.0;
 	}
 	#endif
@@ -117,8 +134,7 @@ void obtenerLaplace(double* res,
 	res[poscatodo] = catodov;
 	
 	double *aux = malloc(max_i * max_j * sizeof(double));
-	int corridas;
-	for(corridas = 0; corridas < 750; corridas++) {		
+	while (calcErrorLaplace(aux, res, max_i, max_j) > EPS) {
 		pasoLaplace((double*) aux, res, max_i, max_j);
 		aux[posanodo] = anodov;
 		aux[poscatodo] = catodov;
@@ -162,7 +178,6 @@ double calcVectorError(double A[],
 					   double delta_x) {
 	
 	#ifdef ASM
-		//fillWithZeros(res, max_i * max_j);
 		calculateVectorError(A, Tn, B, res, max_i, max_j);
 	#endif
 
@@ -345,6 +360,15 @@ void createA_C (double* A, double* k, double indep_term, double delta_x, double 
 }
 
 int main( int argc, char** argv ) {
+	int max_i = 53, max_j = 59;
+	double delta_t = 0.000005, delta_x, delta_y;
+	int max_cant_delta_t = 100000; // cantidad de tiempos a analizar
+	
+	/*scanf("%d", &max_i);
+	scanf("%d", &max_j);
+	scanf("%lf", &delta_t);
+	scanf("%d", &max_cant_delta_t);*/
+
 	// inicializacion de variables
 	int C_rho = 3680;
 	int rho = 1039;
@@ -355,12 +379,11 @@ int main( int argc, char** argv ) {
 	double T_a = 310.15;
 	double T_aire = 296;
 
-	double delta_t = 0.000005, delta_x, delta_y; // numeros al azar
-
+	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;
+	
+	delta_x = 0.1 / max_i; delta_y = 0.1 / max_j; // recinto de 0.1cm x 0.1cm
 
 	double *Tn, *Tn_sig, *TInd, *B, *k, *sigma, *phi, *A, *phiZero, *TIndPhiZero;
-	
-	int max_i = 53, max_j = 59;
 	
 	Tn = malloc(max_i * max_j * sizeof(double));
 	TInd = malloc(max_i * max_j * sizeof(double));
@@ -373,16 +396,13 @@ int main( int argc, char** argv ) {
 	phiZero = malloc(max_i * max_j * sizeof(double));
 	TIndPhiZero = malloc(max_i * max_j * sizeof(double));
 
-	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;
-	
-	delta_x = 0.1 / max_i; delta_y = 0.1 / max_j; // recinto de 0.1cm x 0.1cm
-	
 	int catodo_x_idx = catodo_x / delta_x;
 	int catodo_y_idx = catodo_y / delta_y;
-	double catodo_v = 0;
+	double catodo_v = 0; // voltaje en catodo
+	
 	int anodo_x_idx = anodo_x / delta_x;
 	int anodo_y_idx = anodo_y / delta_y;
-	double anodo_v = 1000;
+	double anodo_v = 1000; // voltaje en anodo
 	
 	printf("%d, %d, %d, %d\n", catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
 	
@@ -407,9 +427,7 @@ int main( int argc, char** argv ) {
 
 	// calculo de TInd
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
-	//printDbg2DMatlab(TInd, max_i, max_j);
 	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
-	//printDbg2DMatlab(TIndPhiZero, max_i, max_j);
 	
 	#ifdef ASM
 		createA (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
@@ -423,11 +441,11 @@ int main( int argc, char** argv ) {
 
 	// resolucion por Jacobi
 	int n; // n es la cantidad de delta_t corridos (el tiempo real es n * delta_t * 2)
-	for (n = 0; n < 100000; n++) {
+	for (n = 0; n < max_cant_delta_t; n++) {
 		
 		// Para simular los pulsos electricos
 		double* TIndAct = TIndPhiZero;
-		if(n % 4000 < 40) 
+		if (n % 4000 < 40) 
 			TIndAct = TInd;
 			
 		#ifdef ASM
