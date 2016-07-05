@@ -10,8 +10,7 @@ distanceBetweenVectors:
 	
 	%define actPhi  rdi
 	%define nextPhi rsi
-	%define length  r10
-	mov length, rcx
+	%define length  rdx
 	
 	%define accum ymm0
 	vxorpd accum, accum
