@@ -1,7 +1,7 @@
 CC = gcc
 ASM = nasm
 DBG = gdb
-CFLAGS = -ggdb -DASM -Wall -O2 -std=c99 -pedantic -m64 -lm
+CFLAGS = -ggdb -DASM -DMEASURE_TIME -Wall -O2 -pedantic -m64 -lm
 ASMFLAGS = -felf64 -g -F dwarf
 
 BIN = jacobi-optimizado

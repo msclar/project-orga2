@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #define EPS 0.000001
 
 #ifdef ASM
@@ -359,16 +360,31 @@ void createA_C (double* A, double* k, double indep_term, double delta_x, double 
 	}
 }
 
-int main( int argc, char** argv ) {
-	int max_i = 53, max_j = 59;
-	double delta_t = 0.000005, delta_x, delta_y;
-	int max_cant_delta_t = 100000; // cantidad de tiempos a analizar
+int main (int argc, char** argv) {
+	int max_i, max_j;
+	double delta_t, delta_x, delta_y;
+	int max_cant_delta_t; // cantidad de tiempos a analizar
+	int cant_prints = 1; // cantidad de impresiones parciales a hacer
 	
-	/*scanf("%d", &max_i);
-	scanf("%d", &max_j);
-	scanf("%lf", &delta_t);
-	scanf("%d", &max_cant_delta_t);*/
-
+	if (argc == 6) {
+		max_i = atoi(argv[1]);
+		max_j = atoi(argv[2]);
+		delta_t = atof(argv[3]);
+		max_cant_delta_t = atoi(argv[4]);
+		cant_prints = atoi(argv[5]);
+	}
+	else if (argc == 1) {
+		max_i = 53;
+		max_j = 59;
+		delta_t = 0.000005;
+		max_cant_delta_t = 100000;
+	}
+	else {
+		printf("La cantidad de parametros pasados es incorrecta\n");
+		printf("usage: max_i max_j delta_t max_cant_delta_t cant_prints\n");
+		return 1;
+	}
+	
 	// inicializacion de variables
 	int C_rho = 3680;
 	int rho = 1039;
@@ -404,13 +420,14 @@ int main( int argc, char** argv ) {
 	int anodo_y_idx = anodo_y / delta_y;
 	double anodo_v = 1000; // voltaje en anodo
 	
-	printf("%d, %d, %d, %d\n", catodo_x_idx, catodo_y_idx, anodo_x_idx, anodo_y_idx);
-	
 	int i, j;
 	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
 	
-	FILE* phi_file = fopen("phi.out", "w");
-	print2DMatlab(phi, max_i, max_j, phi_file);
+	#ifndef MEASURE_TIME
+		FILE* phi_file = fopen("phi.out", "w");
+		print2DMatlab(phi, max_i, max_j, phi_file);
+		fclose(phi_file);
+	#endif
 	
 	// lectura de input
 	for (i = 0; i < max_i; i++) {
@@ -424,6 +441,11 @@ int main( int argc, char** argv ) {
 			phiZero[s] = 0;
 		}
 	}
+
+	#ifdef MEASURE_TIME
+		struct timespec startt, endt;
+		clock_gettime(CLOCK_MONOTONIC,&startt);
+	#endif
 
 	// calculo de TInd
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
@@ -441,7 +463,7 @@ int main( int argc, char** argv ) {
 
 	// resolucion por Jacobi
 	int n; // n es la cantidad de delta_t corridos (el tiempo real es n * delta_t * 2)
-	for (n = 0; n < max_cant_delta_t; n++) {
+	for (n = 1; n <= max_cant_delta_t; n++) {
 		
 		// Para simular los pulsos electricos
 		double* TIndAct = TIndPhiZero;
@@ -467,14 +489,24 @@ int main( int argc, char** argv ) {
 			errorActual = calcVectorError(A, Tn, B, k, auxVectorError, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);		
 		}
 		
+		#ifndef MEASURE_TIME
+			// imprime cant_prints elementos, comenzando de max_cant_delta_t
+			// y descenciendo de a saltos de ceil(max_cant_delta_t / cant_prints) 
+			if ((max_cant_delta_t - n) % ((max_cant_delta_t + cant_prints) / cant_prints) == 0) {
+				char str[32];
+				sprintf(str, "output/T%d.out", n);
+				FILE* Tn_file = fopen(str, "w");
+				print2DMatlab(Tn, max_i, max_j, Tn_file);
+				fclose(Tn_file);
+			}
+		#endif
 	}
 	
-	char str[32];
-	sprintf(str, "output/T%d.out", n);
-	FILE* Tn_file = fopen(str, "w");
-	print2DMatlab(Tn, max_i, max_j, Tn_file);
-	fclose(Tn_file);
-	fclose(phi_file);
+	#ifdef MEASURE_TIME
+		clock_gettime(CLOCK_MONOTONIC, &endt);
+		int tt = endt.tv_sec*1000 + endt.tv_nsec/1000000 - startt.tv_sec*1000 - startt.tv_nsec/1000000; // mido en milisegundos
+		printf("%d, %d, %d, %d\n", max_i, max_j, max_cant_delta_t, tt);
+	#endif
 	
 	free(Tn);
 	free(TInd);
