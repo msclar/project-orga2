@@ -422,21 +422,26 @@ Notar que esto implica que a lo sumo podremos mejorar el tiempo de ejecución de
 con el cálculo paralelizado. Seguramente esta cota superior no llegue a cumplirse, pues no todo el programa
 es paralelizable.\\
 
-La observación más importante es notar que a lo largo de todo el trabajo los cálculos importantes a realizar son de la
+Una observación clave es que a lo largo de todo el trabajo los cálculos importantes a realizar son de la
 forma $a_0 \cdot T_{n+1}(i-1,j) + a_1 \cdot T_{n+1}(i,j-1) + a_2 \cdot T_{n+1}(i+1,j) + a_3 \cdot T_{n+1}(i,j+1) + a_4 \cdot T_{n+1}(i,j)$. Esto ocurre en:
 
 \begin{itemize}
 \item Cálculo del próximo paso del método iterativo de Jacobi.
 \item Cálculo del próximo paso del método iterativo de Laplace.
 \item Cálculo del error de Jacobi.
-\item Cálculo del error de Laplace.
-\end{itemize} 
+\item Cálculo del término independiente ($TInd$).
+\item Creación de la matriz A.
+\end{itemize}
 
-También hay cálculos fácilmente paralelizables, de naturaleza más simple, que se incluyeron en el trabajo:
+%%% SE HACEN ASI
+
+También hay cálculos paralelizables que no son de la forma anteriormente mencionada. Los mismos se incluyeron en el trabajo:
 
 \begin{itemize}
-\item Creación de la matriz A ()
 \item Actualización de la matriz B en cada paso del Jacobi.
+\item Cálculo de la norma de un vector.
+\item Cálculo de la distancia entre dos vectores (utilizado para calcular el error de Laplace).
+\item Llenar una matriz con una constante (muy utilizado para inicializar las matrices en cero).
 \end{itemize} 
 
 A propósito se excluyó de la paralelización la lectura del input pues depende 
