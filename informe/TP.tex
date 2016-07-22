@@ -414,6 +414,37 @@ matriz. Esto resulta en un programa mucho más eficiente pero más complejo en s
 Primeramente, notemos que nuestra implementación trabaja con números de punto flotante de doble
 precisión, que son de 64 bits cada uno. Esta precisión fue requerida por el LSC, para el que no
 era suficiente utilizar precisión simple por la exactitud necesaria dado el contexto de utilización.
+Con esta restricción, los registros XMM sólo permitirían paralelizar el cómputo de dos elementos por vez,
+ya que tienen 128 bits. Es por eso que decidimos utilizar registros YMM a lo largo de todo el trabajo.
+Como los registros YMM tienen 256 bits, permiten el cálculo de 4 double-precision floating point numbers
+a la vez (64 bits $\times$ 4 $=$ 256 bits).\\
+Notar que esto implica que a lo sumo podremos mejorar el tiempo de ejecución de nuestro programa en 4 veces
+con el cálculo paralelizado. Seguramente esta cota superior no llegue a cumplirse, pues no todo el programa
+es paralelizable.\\
+
+La observación más importante es notar que a lo largo de todo el trabajo los cálculos importantes a realizar son de la
+forma $a_0 \cdot T_{n+1}(i-1,j) + a_1 \cdot T_{n+1}(i,j-1) + a_2 \cdot T_{n+1}(i+1,j) + a_3 \cdot T_{n+1}(i,j+1) + a_4 \cdot T_{n+1}(i,j)$. Esto ocurre en:
+
+\begin{itemize}
+\item Cálculo del próximo paso del método iterativo de Jacobi.
+\item Cálculo del próximo paso del método iterativo de Laplace.
+\item Cálculo del error de Jacobi.
+\item Cálculo del error de Laplace.
+\end{itemize} 
+
+También hay cálculos fácilmente paralelizables, de naturaleza más simple, que se incluyeron en el trabajo:
+
+\begin{itemize}
+\item Creación de la matriz A ()
+\item Actualización de la matriz B en cada paso del Jacobi.
+\end{itemize} 
+
+A propósito se excluyó de la paralelización la lectura del input pues depende 
+fuertemente de la función deseada por el usuario. Actualmente corremos el programa
+con las funciones como fueron pasadas por el LSC a modo de ejemplo, pero ellos utilizarán
+nuestro programa con diversas entradas.
+
+
 
 \section{Experimentos}
 
