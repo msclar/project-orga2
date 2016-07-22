@@ -15,6 +15,8 @@
 \usepackage{algpseudocode}
 \usepackage{scrextend}
 \usepackage{blindtext}
+\usepackage{colortbl}
+\usepackage{color}
 
 
 %Cosas para escribir codigo fuente
@@ -314,6 +316,58 @@ en la complejidad del código a paralelizar, pues ya no es una simple resolució
 de sistema de ecuaciones sino que hay que tener sumo cuidado en respetar
 los índices indicados como no nulos. \\
 
+Gráficamente, si $A$ fuera una matriz de $6x6$ los únicos lugares que pueden
+ser no nulos son los que se muestran en gris en la imagen. Para la fila 
+correspondiente a $(i,j)$, los únicos elementos no nulos pueden ser $(i, j-1)$, 
+$(i,j+1)$ (que se verán a la izquierda y a la derecha de $(i,j)$ respectivamente), 
+$(i-1, j)$ e $(i+1,j)$ (que al estar una fila arriba o abajo de $(i,j)$, 
+en el gráfico se verán $max_j = 6$ lugares para la izquierda o para la derecha de él). 
+
+\begin{table}[!htbp]
+\centering
+\label{matriz_a}
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \cellcolor{mygray} & \cellcolor{mygray} & & & & & \cellcolor{mygray} & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
+ & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline
+\end{tabular}
+\caption{Representación de $A$ para una matriz de $6x6$. En gris se ven las casillas donde es posible que haya un elemento no nulo. Esta representación ignora los bordes (están en blanco): notar que las filas del medio que discontinúan el patrón diagonal corresponden a los bordes verticales ($(i,0)$ o $(i,max_j)$ $\forall i$) y las del principio y final corresponden a ($(0,j)$ o $(max_i,j)$ $\forall j$). }
+\end{table}
+
 Como los bordes se rigen por ecuaciones distintas al resto del tejido, comentamos a continuación
 cómo las tratamos, teniendo como objetivo optimizar el tiempo de cómputo total:
 \begin{itemize}
@@ -326,6 +380,47 @@ fórmula diferente al de la mayoría de los puntos. Para evitar incluir
 condicionales se resolvieron esos puntos como si valiera la fóŕmula general
 y luego se sobreescribieron los valores por los nuevos.
 \end{itemize}
+
+\newpage
+
+\section{Optimizaciones realizadas}
+
+\subsection{Optimizaciones previas a SIMD}
+
+Como vimos en \ref{matriz_a}, cada fila contiene a lo sumo 5 elementos no 
+nulos. Es un desperdicio tanto espacial como temporal guardar esos elementos en memoria y analizarlos.
+Es por eso que decidimos representar a $A$ como una matriz de 5 filas y $max_i \times max_j$ columnas, 
+en la que cada fila guarda uno de los cinco elementos no nulos. Esto será muy útil a la hora de paralelizar
+el procesamiento con SIMD, como veremos más adelante. \\
+Nuestra convención es la siguiente: 
+
+\begin{table}[!htbp]
+\centering
+\label{cincovecinos}
+\begin{tabular}{l|l|l}
+\cline{2-2}
+                       & fila 0 &                       \\ \hline
+\multicolumn{1}{|l|}{fila 1} & fila 4 & \multicolumn{1}{l|}{fila 3} \\ \hline
+                       & fila 2 &                       \\ \cline{2-2}
+\end{tabular}
+\caption{Representación esquemática de los cinco elementos no nulos, y a qué fila corresponden.}
+\end{table}
+
+De esta forma, no guardamos los ceros y tampoco los tendremos en cuenta a la hora de procesar la 
+matriz. Esto resulta en un programa mucho más eficiente pero más complejo en su lógica.
+
+\subsection{Optimizaciones con SIMD} 
+
+Primeramente, notemos que nuestra implementación trabaja con números de punto flotante de doble
+precisión, que son de 64 bits cada uno. Esta precisión fue requerida por el LSC, para el que no
+era suficiente utilizar precisión simple por la exactitud necesaria dado el contexto de utilización.
+
+\section{Experimentos}
+
+En esta sección compararemos la performance temporal de nuestro programa con y sin optimizaciones
+SIMD. Adicionalmente, lo compararemos con la versión sin ninguna optimización previa hecha en C,
+para demostrar que las optimizaciones previas también fueron de vital importancia: una implementación
+en ASM de esta idea hubiera sido inútil, pues el algoritmo inicial será mucho más lenta. \\
 
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
