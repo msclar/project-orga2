@@ -11,13 +11,12 @@
 \usepackage{graphicx} %Para incluir el logo de la UBA
 \usepackage{caratula} %Para armar el cuadro de integrantes
 \usepackage{multirow} %Para poder poner varias lineas juntas sin divisiones en una tabla
-\usepackage[lined,ruled,linesnumbered]{algorithm2e}
+\usepackage{algorithm2e}
 \usepackage{algpseudocode}
 \usepackage{scrextend}
 \usepackage{blindtext}
 \usepackage{colortbl}
 \usepackage{color}
-
 
 %Cosas para escribir codigo fuente
 %Fuente: http://en.wikibooks.org/wiki/LaTeX/Source_Code_Listings
@@ -300,7 +299,7 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 \subsection{Planteo del sistema y resolución}
 
 Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, 
-podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$$ y 
+podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = B$$, donde $B = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$ y 
 despejar $T_{n+1}$ utilizando Jacobi. Consideramos a $A$ como la matriz 
 cuadrada de lado $max_i \cdot max_j$ donde cada fila (y cada columna) corresponde a 
 una posición $(i, j)$ de la discretización de modo que en la fila de la 
@@ -365,7 +364,7 @@ en el gráfico se verán $max_j = 6$ lugares para la izquierda o para la derecha
  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline
 \end{tabular}
-\caption{Representación de $A$ para una matriz de $6x6$. En gris se ven las casillas donde es posible que haya un elemento no nulo. Esta representación ignora los bordes (están en blanco): notar que las filas del medio que discontinúan el patrón diagonal corresponden a los bordes verticales ($(i,0)$ o $(i,max_j)$ $\forall i$) y las del principio y final corresponden a ($(0,j)$ o $(max_i,j)$ $\forall j$). }
+\caption{Representación de $A$ para una matriz de $6\times6$. En gris se ven las casillas donde es posible que haya un elemento no nulo. Esta representación ignora los bordes (están en blanco): notar que las filas del medio que discontinúan el patrón diagonal corresponden a los bordes verticales ($(i,0)$ o $(i,max_j)$ $\forall i$) y las del principio y final corresponden a ($(0,j)$ o $(max_i,j)$ $\forall j$). }
 \end{table}
 
 Como los bordes se rigen por ecuaciones distintas al resto del tejido, comentamos a continuación
@@ -377,9 +376,45 @@ restricción que encontramos fue no incluir los bordes exteriores en el sistema 
 resuelto aplicar las condiciones de borde.
 \item Los puntos donde se aplican los electrodos también tienen una 
 fórmula diferente al de la mayoría de los puntos. Para evitar incluir 
-condicionales se resolvieron esos puntos como si valiera la fóŕmula general
+condicionales se resolvieron esos puntos como si valiera la fórmula general
 y luego se sobreescribieron los valores por los nuevos.
 \end{itemize}
+
+A modo de resumen daremos un pseudocódigo del problema implementado en su totalidad. Luego recordaremos cómo son los métodos de Jacobi y Laplace, pues son el punto más importante de paralelización usando SIMD.
+
+\begin{algorithm}[H]
+Leer par\'ametros de entrada ($C_{\rho}$, $\rho$, $q'''$, $C_b$, $\rho_b$, $w_b$, $T_a$, $T_{aire}$, $max_i$, $max_j$, $\Delta_t$) \\
+Obtener el potencial el\'ectrico $\phi$ con el método de Laplace \\
+Crear la matriz $A$ \\
+
+\ForAll{tiempos $t$ en el intervalo $[0..max\_tiempo\_a\_analizar/2]$} {
+	Actualizar la matriz $B$ \\
+	\While{error del calculo $>$ epsilon} {
+		Realizo dos pasos del método de Jacobi
+		Actualizo el error
+	}
+}
+\caption{Pseudocódigo del algoritmo general}
+\end{algorithm}
+
+Dado que tendrá relevancia posterior, recordemos cómo es el método iterativo de Jacobi para resolver el sistema de ecuaciones $A \cdot T_{n+1} = B$, siendo $T_{n+1}$ la matriz a despejar.
+
+\begin{algorithm}[H]
+\KwIn{Dos matrices $A = (a_{ij})$, $B = (b_{ij})$; $x^{(0)}$ una aproximación inicial a la solución; $\epsilon > 0$ la cota para la convergencia}
+\KwOut{Una matriz $X$ tal que $||A \cdot X - B|| < \epsilon$}
+
+$k \leftarrow 0$
+\While{$||A \cdot T_{n+1} - B|| \geq \epsilon$} {
+	suma $\leftarrow$ 0 \\
+	\For{$i \leftarrow$ 1 to $n$} {
+		$x_i^{(k+1)} = \frac{1}{a_{ii}}(b_i - \sum_{j \neq i} {a_ij x_j^{(k)}})$
+	}
+	$k \leftarrow k + 1$
+}
+\caption{Pseudocódigo del método de Jacobi}
+\end{algorithm}
+
+El cálculo de la sumatoria se podrá paralelizar en SIMD para calcular cuatro elementos a la vez. Notar que la aproximación inicial $x^{(0)}$ es $T_n$ en el caso de nuestro problema, donde queremos calcular $T_{n+1}$. Si nos encontramos en la primera ejecución de Jacobi, la aproximación inicial será la temperatura arterial para todas las casillas de la matriz $T_a$.
 
 \newpage
 
@@ -430,27 +465,36 @@ forma $a_0 \cdot T_{n+1}(i-1,j) + a_1 \cdot T_{n+1}(i,j-1) + a_2 \cdot T_{n+1}(i
 \item Cálculo del próximo paso del método iterativo de Laplace.
 \item Cálculo del error de Jacobi.
 \item Cálculo del término independiente ($TInd$).
-\item Creación de la matriz A.
+\item Creación de la matriz $A$.
 \end{itemize}
 
 %%% SE HACEN ASI
 
-También hay cálculos paralelizables que no son de la forma anteriormente mencionada. Los mismos se incluyeron en el trabajo:
+A continuación explicaremos la paralelización del próximo paso de Jacobi. 
+
+Aprovechando la representación de $A$ como una matriz de 5 filas donde cada una de ellas guarda uno de los 5 vecinos para todas las casillas, en un acceso a memoria se levantarán los valores correspondientes a cuatro casillas. \\
+
+mascara = 
+YMM0 = []
+YMM1 = []
+
+También paralelizamos más cálculos que no son de la forma anteriormente mencionada y explicada. Los mismos se incluyeron en el trabajo:
 
 \begin{itemize}
-\item Actualización de la matriz B en cada paso del Jacobi.
+\item Actualización de la matriz $B$ en cada paso del Jacobi (recordar que $B = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$).
 \item Cálculo de la norma de un vector.
 \item Cálculo de la distancia entre dos vectores (utilizado para calcular el error de Laplace).
 \item Llenar una matriz con una constante (muy utilizado para inicializar las matrices en cero).
-\end{itemize} 
+\end{itemize}
 
 A propósito se excluyó de la paralelización la lectura del input pues depende 
 fuertemente de la función deseada por el usuario. Actualmente corremos el programa
 con las funciones como fueron pasadas por el LSC a modo de ejemplo, pero ellos utilizarán
-nuestro programa con diversas entradas.
+nuestro programa con diversas entradas. \\
 
+En todos los casos mencionados se evitó tratar los bordes de las matrices como lugares especiales pues significaría agregar condicionales, que vimos en la materia que puede dar lugar a reducciones de performance. Se decidió procesarlos como cualquier otra casilla y luego sobreescribir esos valores por los valores correctos: en el caso de los bordes exteriores, la función \texttt{copiarbordes} en ASM hace el trabajo, y en el caso de los electrodos se sobreescriben los valores desde C (pues son sólo dos puntos, donde no se puede aprovechar para paralelizar). Como las matrices de dos dimensiones son representadas en ASM en una sola dimensión, ignorar el hecho de que nos encontramos en un borde hace que evitemos agregar condicionales y procesemos todas las casillas en un único ciclo.\\
 
-
+\newpage
 \section{Experimentos}
 
 En esta sección compararemos la performance temporal de nuestro programa con y sin optimizaciones
