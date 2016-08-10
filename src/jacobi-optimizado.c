@@ -4,6 +4,23 @@
 #include <time.h>
 #define EPS 0.000001
 
+long long tt;
+struct timespec startt, endt;
+int measure_type;
+
+#define STARTMEASURE(x)\
+if( measure_type == x)\
+{\
+	clock_gettime(CLOCK_MONOTONIC,&startt);\
+}
+	
+#define ENDMEASURE(x)\
+if( measure_type == x)\
+{\
+	clock_gettime(CLOCK_MONOTONIC, &endt);\
+	tt += endt.tv_sec*1000000000LL + endt.tv_nsec - startt.tv_sec*1000000000LL - startt.tv_nsec;\
+}
+
 #ifdef ASM
 	extern void jacobiStep (double*, double*, double*, double*, int, int);
 	extern void laplaceStep (double*, double*, int, int);
@@ -64,6 +81,11 @@ double normaVector(double matriz[], int cant_elems) {
 }
 
 void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
+	
+	#ifdef MEASURE_TIME
+		STARTMEASURE(3);
+	#endif
+	
 	#ifdef ASM
 		laplaceStep(res, phi, max_i, max_j);
 	#endif
@@ -89,12 +111,21 @@ void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 	}
 	#endif
 	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(3);
+	#endif
+	
 	
 	return;
 }
 
 double calcErrorLaplace(double* actPhi, double* nextPhi, int max_i, int max_j) {
 	double norma = 0.0;
+	
+	#ifdef MEASURE_TIME
+		STARTMEASURE(4);
+	#endif
+	
 	#ifdef ASM
 		norma = distanceBetweenVectors(actPhi, nextPhi, max_i * max_j);
 	#endif
@@ -106,6 +137,11 @@ double calcErrorLaplace(double* actPhi, double* nextPhi, int max_i, int max_j) {
 	}
 	norma = sqrt(norma);
 	#endif
+	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(4);
+	#endif
+	
 	return norma;
 }
 
@@ -118,6 +154,11 @@ void obtenerLaplace(double* res,
 					double catodov, 
 					int max_i, 
 					int max_j) {
+	
+	#ifdef MEASURE_TIME
+		STARTMEASURE(5);
+	#endif
+						
 	#ifndef ASM
 	int i;
 	for (i = 0; i < max_i * max_j; i++) {
@@ -127,6 +168,10 @@ void obtenerLaplace(double* res,
 	
 	#ifdef ASM
 		fillWithConstant(res, (anodov + catodov) / 2.0, max_i * max_j);
+	#endif
+	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(5);
 	#endif
 	
 	int posanodo = indice(anodoi, anodoj, max_j);
@@ -177,6 +222,10 @@ double calcVectorError(double A[],
 					   int max_i,
 					   int max_j,
 					   double delta_x) {
+						   
+	#ifdef MEASURE_TIME
+		STARTMEASURE(6);
+	#endif
 	
 	#ifdef ASM
 		calculateVectorError(A, Tn, B, res, max_i, max_j);
@@ -200,6 +249,10 @@ double calcVectorError(double A[],
 		res[indice(0, j, max_j)] = 0.0;
 		res[indice(max_i-1, j, max_j)] = 0.0;
 	}
+	#endif	
+			   
+	#ifdef MEASURE_TIME
+		ENDMEASURE(6);
 	#endif
 	
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10);
@@ -220,13 +273,21 @@ double calcVectorError(double A[],
 		) / (4 * (r - 1));
 
 	double norma;
-
+		   
+	#ifdef MEASURE_TIME
+		STARTMEASURE(7);
+	#endif
+	
 	#ifndef ASM
 		norma = normaVector(res, max_i * max_j);
 	#endif
 	
 	#ifdef ASM
 		norma = vectorNorm(res, max_i * max_j);
+	#endif
+	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(7);
 	#endif
 	return norma;
 }
@@ -252,6 +313,9 @@ void jacobiStepOptimized(double* Tn_sig,
 				double delta_x,
 				double T_aire) {
 	// X_i^(iter+1) = (b_i - sum (j != i) a_ij * X_j^iter	
+	#ifdef MEASURE_TIME
+		STARTMEASURE(8);
+	#endif
 	
 	#ifndef ASM
 	
@@ -286,6 +350,9 @@ void jacobiStepOptimized(double* Tn_sig,
 		jacobiStep(Tn_sig, Tn, B, A, max_i, max_j);
 	#endif
 	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(8);
+	#endif
 	
 	// temperatura en electrodos
 	double r = k[indice(catodo_x, catodo_y, max_j)] / (delta_x * 10); //  h = 10 W / m² K
@@ -421,7 +488,6 @@ int main (int argc, char** argv) {
 	double anodo_v = 1000; // voltaje en anodo
 	
 	int i, j;
-	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
 	
 	#ifndef MEASURE_TIME
 		FILE* phi_file = fopen("phi.out", "w");
@@ -443,13 +509,42 @@ int main (int argc, char** argv) {
 	}
 
 	#ifdef MEASURE_TIME
-		struct timespec startt, endt;
-		clock_gettime(CLOCK_MONOTONIC,&startt);
+		tt = 0;
+		printf("Ingrese el tipo de medicion\n");
+		scanf("%i", &measure_type);
+		// Ingreso el tipo de la medicion, los tipos posibles son los siguientes:
+		/*
+		0 = TODO
+		1 = CREACION DE A
+		2 = UPDATE B
+		3 = PASO LAPLACE
+		4 = ERROR LAPLACE
+		5 = FILL WITH CONSTANT LAPLACE
+		6 = CALC VECTOR ERROR
+		7 = NORM VECTOR
+		8 = JACOBI STEP
+		9 = CALCULATE TIND
+		*/
+		tt = 0;
+		STARTMEASURE(0);
 	#endif
 
+	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
 	// calculo de TInd
+	
+	#ifdef MEASURE_TIME
+		STARTMEASURE(9);
+	#endif
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
 	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
+	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(9);
+	#endif
+	
+	#ifdef MEASURE_TIME
+		STARTMEASURE(1);
+	#endif
 	
 	#ifdef ASM
 		createA (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
@@ -458,6 +553,11 @@ int main (int argc, char** argv) {
 	#ifndef ASM
 		createA_C (A, k, - w_b * C_b * rho_b - rho * C_rho / delta_t, delta_x, delta_y, max_i, max_j);
 	#endif
+	
+	#ifdef MEASURE_TIME
+		ENDMEASURE(1);
+	#endif
+	
 	
 	double *auxVectorError = malloc(max_i * max_j * sizeof(double));
 
@@ -470,12 +570,20 @@ int main (int argc, char** argv) {
 		if (n % 4000 < 40) 
 			TIndAct = TInd;
 			
+		#ifdef MEASURE_TIME
+			STARTMEASURE(2);
+		#endif
+		
 		#ifdef ASM
 			updateB(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);
 		#endif
 		
 		#ifndef ASM
 			updateB_C(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);
+		#endif
+		
+		#ifdef MEASURE_TIME
+			ENDMEASURE(2);
 		#endif
 		
 		double errorPrevio = 0, errorActual = calcVectorError(A, Tn, B, k, auxVectorError, anodo_x_idx, anodo_y_idx, catodo_x_idx, catodo_y_idx, max_i, max_j, delta_x);
@@ -503,9 +611,8 @@ int main (int argc, char** argv) {
 	}
 	
 	#ifdef MEASURE_TIME
-		clock_gettime(CLOCK_MONOTONIC, &endt);
-		int tt = endt.tv_sec*1000 + endt.tv_nsec/1000000 - startt.tv_sec*1000 - startt.tv_nsec/1000000; // mido en milisegundos
-		printf("%d, %d, %d, %d\n", max_i, max_j, max_cant_delta_t, tt);
+		ENDMEASURE(0);
+		printf("%d, %d, %d, %.6f\n", max_i, max_j, max_cant_delta_t, tt/1000000.0); // Tiempo en milisegundos
 	#endif
 	
 	free(Tn);
