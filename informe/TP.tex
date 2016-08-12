@@ -414,7 +414,7 @@ $k \leftarrow 0$
 \caption{Pseudocódigo del método de Jacobi}
 \end{algorithm}
 
-El cálculo de la sumatoria se podrá paralelizar en SIMD para calcular cuatro elementos a la vez. Notar que la aproximación inicial $x^{(0)}$ es $T_n$ en el caso de nuestro problema, donde queremos calcular $T_{n+1}$. Si nos encontramos en la primera ejecución de Jacobi, la aproximación inicial será la temperatura arterial para todas las casillas de la matriz $T_a$.
+El cálculo de la sumatoria se podrá paralelizar en SIMD para calcular cuatro elementos a la vez. Notar que la aproximación inicial $x^{(0)}$ es $T_n$ en el caso de nuestro problema, donde queremos calcular $T_{n+1}$. Si nos encontramos en la primera ejecución de Jacobi, la aproximación inicial será la temperatura arterial ($T_a$) para todas las casillas de la matriz $T_0$. \\
 
 \newpage
 
@@ -467,6 +467,50 @@ forma $a_0 \cdot T_{n+1}(i-1,j) + a_1 \cdot T_{n+1}(i,j-1) + a_2 \cdot T_{n+1}(i
 \item Cálculo del término independiente ($TInd$).
 \item Creación de la matriz $A$.
 \end{itemize}
+
+Comenzaremos explicando la paralelización de un paso del método de Laplace, pues es considerablemente más sencillo que el método de Jacobi y su error.
+
+\begin{lstlisting}
+void laplaceStep_C(double* res, double* phi, int max_i, int max_j) {
+	int i, j;
+	// promedio los 4 vecinos (estos tienen los 4 vecinos)
+	for (i = 1; i < max_i - 1; i++) {
+		for (j = 1; j < max_j - 1; j++) {
+			res[indice(i, j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
+		}
+	}
+    ...
+}
+\end{lstlisting}
+
+Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, $res_{i,j+2}$ y $res_{i,j+3}$. Para eso, Deberemos leer algunas casillas de $\phi$ y paralelizar el cálculo. Más precisamente, podríamos cargar cuatro casillas de $\phi$ en un registro YMM (pues la matriz es formada por números de punto flotante de doble precisión) y sumar empaquetadamente. Gráficamente:
+
+\begin{table}[]
+\centering
+\label{my-label}
+\begin{tabular}{l|
+>{\columncolor{mygray}}l |l|l|l|l}
+\cline{2-5}
+                                                   & ymm0                         & ymm0                                                                         & ymm0                                                 & ymm0 &                           \\ \hline
+\multicolumn{1}{|l|}{\cellcolor{mygray}ymm1} & \cellcolor{mygray}ymm1 & \cellcolor{mygray}\begin{tabular}[c]{@{}l@{}}ymm1/\\ ymm2\end{tabular} & \begin{tabular}[c]{@{}l@{}}ymm1/\\ ymm2\end{tabular} & ymm2 & \multicolumn{1}{l|}{ymm2} \\ \hline
+                                                   & ymm3                         & ymm3                                                                         & ymm3                                                 & ymm3 &                           \\ \cline{2-5}
+\end{tabular}
+\caption{Representación de los registros que contienen cada casilla de la matriz $\phi$. En gris se ven los cinco vecinos originales de la casilla $(i,j)$}
+\end{table}
+
+donde 
+\begin{centering}
+\texttt{ymm0 = [phi(i-1, j) | phi(i-1, j+1) | phi(i-1, j+2) | phi(i-1, j+3)]}, \\
+\texttt{ymm1 = [phi(i, j-1) | phi(i, j) | phi(i, j+1) | phi(i, j+2)]}, \\
+\texttt{ymm2 = [phi(i, j+1) | phi(i, j+2) | phi(i, j+3) | phi(i, j+4)]}, \\
+\texttt{ymm3 = [phi(i+1, j) | phi(i+1, j+1) | phi(i+1, j+2) | phi(i+1, j+3)]} \\
+\texttt{suma = [phi(i-1, j) + phi(i, j-1) + phi(i, j+1) + phi(i+1, j) | \\
+                phi(i-1, j+1) + phi(i, j) + phi(i, j+2) + phi(i+1, j+1) | \\
+                phi(i-1, j+2) + phi(i, j+1) + phi(i, j+3) + phi(i+1, j+2) | \\
+                phi(i-1, j+3) + phi(i, j+2) + phi(i, j+4) + phi(i+1, j+3)]}
+\end{centering}
+
+En realidad, la implementación evita utilizar tantos registros YMM utilizando un acumulador que comienza en cero y al que se suma cada registro. La explicación se hizo con cuatro registros simultáneos para mayor claridad.
 
 %%% SE HACEN ASI
 
