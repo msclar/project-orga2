@@ -4,21 +4,21 @@
 #include <time.h>
 #define EPS 0.000001
 
-long long tt;
-struct timespec startt, endt;
-int measure_type;
+long long tt[16];
+struct timespec startt[16], endt[16];
+int measure_type = -1;
 
 #define STARTMEASURE(x)\
-if( measure_type == x)\
+if (measure_type != x)\
 {\
-	clock_gettime(CLOCK_MONOTONIC,&startt);\
+	clock_gettime(CLOCK_MONOTONIC,&(startt[x]));\
 }
 	
 #define ENDMEASURE(x)\
-if( measure_type == x)\
+if (measure_type != x)\
 {\
-	clock_gettime(CLOCK_MONOTONIC, &endt);\
-	tt += endt.tv_sec*1000000000LL + endt.tv_nsec - startt.tv_sec*1000000000LL - startt.tv_nsec;\
+	clock_gettime(CLOCK_MONOTONIC, &(endt[x]));\
+	tt[x] += endt[x].tv_sec*1000000000LL + endt[x].tv_nsec - startt[x].tv_sec*1000000000LL - startt[x].tv_nsec;\
 }
 
 #ifdef ASM
@@ -509,9 +509,8 @@ int main (int argc, char** argv) {
 	}
 
 	#ifdef MEASURE_TIME
-		tt = 0;
-		printf("Ingrese el tipo de medicion\n");
-		scanf("%i", &measure_type);
+		//printf("Ingrese el tipo de medicion\n");
+		// scanf("%i", &measure_type);
 		// Ingreso el tipo de la medicion, los tipos posibles son los siguientes:
 		/*
 		0 = TODO
@@ -525,7 +524,9 @@ int main (int argc, char** argv) {
 		8 = JACOBI STEP
 		9 = CALCULATE TIND
 		*/
-		tt = 0;
+		for (i = 0; i < 16; i++)
+			tt[i] = 0;
+		
 		STARTMEASURE(0);
 	#endif
 
@@ -534,6 +535,7 @@ int main (int argc, char** argv) {
 	
 	#ifdef MEASURE_TIME
 		STARTMEASURE(9);
+	
 	#endif
 	calculateTInd(phi, delta_x, delta_y, sigma, TInd, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
 	calculateTInd(phiZero, delta_x, delta_y, sigma, TIndPhiZero, max_i, max_j, w_b * C_b * rho_b * T_a + q_ddd);
@@ -557,7 +559,6 @@ int main (int argc, char** argv) {
 	#ifdef MEASURE_TIME
 		ENDMEASURE(1);
 	#endif
-	
 	
 	double *auxVectorError = malloc(max_i * max_j * sizeof(double));
 
@@ -612,7 +613,12 @@ int main (int argc, char** argv) {
 	
 	#ifdef MEASURE_TIME
 		ENDMEASURE(0);
-		printf("%d, %d, %d, %.6f\n", max_i, max_j, max_cant_delta_t, tt/1000000.0); // Tiempo en milisegundos
+		printf("%d, %d, %d", max_i, max_j, max_cant_delta_t); // Tiempo en milisegundos
+		
+		for (i = 0; i < 10; i++) {
+			printf(", %.6f", tt[i]/1000000.0); // Tiempo en milisegundos	
+		}
+		printf("\n");
 	#endif
 	
 	free(Tn);
