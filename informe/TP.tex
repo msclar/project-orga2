@@ -442,7 +442,12 @@ Nuestra convención es la siguiente:
 \end{table}
 
 De esta forma, no guardamos los ceros y tampoco los tendremos en cuenta a la hora de procesar la 
-matriz. Esto resulta en un programa mucho más eficiente pero más complejo en su lógica.
+matriz. Esto resulta en un programa mucho más eficiente pero más complejo en su lógica.\\
+
+Se decidió que la fila 0 fuera la superior pues eso permite evitar 
+restas de $max_j$ para acceder a otras filas: varias operaciones en ASM no permiten
+realizar \texttt{[k - max\_j + 8]} para acceder a una posición de memoria con una única instrucción,
+pero sí se permite \texttt{[k + max\_j - 8]}. \\
 
 \subsection{Optimizaciones con SIMD} 
 
@@ -461,31 +466,27 @@ Una observación clave es que a lo largo de todo el trabajo los cálculos import
 forma $a_0 \cdot T_{n+1}(i-1,j) + a_1 \cdot T_{n+1}(i,j-1) + a_2 \cdot T_{n+1}(i+1,j) + a_3 \cdot T_{n+1}(i,j+1) + a_4 \cdot T_{n+1}(i,j)$. Esto ocurre en:
 
 \begin{itemize}
-\item Cálculo del próximo paso del método iterativo de Jacobi.
-\item Cálculo del próximo paso del método iterativo de Laplace.
-\item Cálculo del error de Jacobi.
-\item Cálculo del término independiente ($TInd$).
-\item Creación de la matriz $A$.
+\item Cálculo del próximo paso del método iterativo de Jacobi (\texttt{jacobiStep.asm}).
+\item Cálculo del próximo paso del método iterativo de Laplace (\texttt{laplaceStep.asm}).
+\item Cálculo del error de Jacobi (\texttt{calculateVectorError.asm}).
+\item Cálculo del término independiente ($TInd$) (\texttt{calculateTInd.asm}).
+\item Creación de la matriz $A$ (\texttt{createA.asm}).
 \end{itemize}
 
-Comenzaremos explicando la paralelización de un paso del método de Laplace, pues es considerablemente más sencillo que el método de Jacobi y su error.
+Comenzaremos explicando la paralelización de un paso del método de 
+Laplace, pues es considerablemente más sencillo que el método de Jacobi y su error.
 
-\begin{lstlisting}
-void laplaceStep_C(double* res, double* phi, int max_i, int max_j) {
-	int i, j;
-	// promedio los 4 vecinos (estos tienen los 4 vecinos)
-	for (i = 1; i < max_i - 1; i++) {
-		for (j = 1; j < max_j - 1; j++) {
-			res[indice(i, j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
-		}
+\begin{lstlisting}[caption = {Porción de la versión en C del código que calcula un paso del Laplace}]
+for (i = 1; i < max_i - 1; i++) {
+	for (j = 1; j < max_j - 1; j++) {
+		res[indice(i, j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
 	}
-    ...
 }
 \end{lstlisting}
 
 Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, $res_{i,j+2}$ y $res_{i,j+3}$. Para eso, Deberemos leer algunas casillas de $\phi$ y paralelizar el cálculo. Más precisamente, podríamos cargar cuatro casillas de $\phi$ en un registro YMM (pues la matriz es formada por números de punto flotante de doble precisión) y sumar empaquetadamente. Gráficamente:
 
-\begin{table}[]
+\begin{table}[!htbp]
 \centering
 \label{my-label}
 \begin{tabular}{l|
@@ -498,29 +499,85 @@ Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, $res_{i,j+2}$ y
 \caption{Representación de los registros que contienen cada casilla de la matriz $\phi$. En gris se ven los cinco vecinos originales de la casilla $(i,j)$}
 \end{table}
 
-donde 
-\begin{centering}
-\texttt{ymm0 = [phi(i-1, j) | phi(i-1, j+1) | phi(i-1, j+2) | phi(i-1, j+3)]}, \\
-\texttt{ymm1 = [phi(i, j-1) | phi(i, j) | phi(i, j+1) | phi(i, j+2)]}, \\
-\texttt{ymm2 = [phi(i, j+1) | phi(i, j+2) | phi(i, j+3) | phi(i, j+4)]}, \\
-\texttt{ymm3 = [phi(i+1, j) | phi(i+1, j+1) | phi(i+1, j+2) | phi(i+1, j+3)]} \\
-\texttt{suma = [phi(i-1, j) + phi(i, j-1) + phi(i, j+1) + phi(i+1, j) | \\
-                phi(i-1, j+1) + phi(i, j) + phi(i, j+2) + phi(i+1, j+1) | \\
-                phi(i-1, j+2) + phi(i, j+1) + phi(i, j+3) + phi(i+1, j+2) | \\
-                phi(i-1, j+3) + phi(i, j+2) + phi(i, j+4) + phi(i+1, j+3)]}
-\end{centering}
+\begin{table}[!htbp]
+\begin{tabular}{rl}
+\texttt{ymm0} & \texttt{= [phi(i-1, j) | phi(i-1, j+1) | phi(i-1, j+2) | phi(i-1, j+3)]}, \\
+\texttt{ymm1} & \texttt{= [phi(i, j-1) | phi(i, j) | phi(i, j+1) | phi(i, j+2)]}, \\
+\texttt{ymm2} & \texttt{= [phi(i, j+1) | phi(i, j+2) | phi(i, j+3) | phi(i, j+4)]}, \\
+\texttt{ymm3} & \texttt{= [phi(i+1, j) | phi(i+1, j+1) | phi(i+1, j+2) | phi(i+1, j+3)]} \\
+\texttt{suma} & \texttt{= [phi(i-1, j) + phi(i, j-1) + phi(i, j+1) + phi(i+1, j) |} \\
+ & \ \ \ \texttt{phi(i-1, j+1) + phi(i, j) + phi(i, j+2) + phi(i+1, j+1) |} \\
+ & \ \ \ \texttt{phi(i-1, j+2) + phi(i, j+1) + phi(i, j+3) + phi(i+1, j+2) |} \\
+ & \ \ \ \texttt{phi(i-1, j+3) + phi(i, j+2) + phi(i, j+4) + phi(i+1, j+3)]} \\
+\texttt{promedio} & \texttt{= ([phi(i-1, j) + phi(i, j-1) + phi(i, j+1) + phi(i+1, j)) / 4.0 |} \\
+ & \ \ \ \texttt{(phi(i-1, j+1) + phi(i, j) + phi(i, j+2) + phi(i+1, j+1)) / 4.0 |} \\
+ & \ \ \ \texttt{(phi(i-1, j+2) + phi(i, j+1) + phi(i, j+3) + phi(i+1, j+2)) / 4.0 |} \\
+ & \ \ \ \texttt{(phi(i-1, j+3) + phi(i, j+2) + phi(i, j+4) + phi(i+1, j+3)) / 4.0]} \\
+\end{tabular}
+\end{table}
 
-En realidad, la implementación evita utilizar tantos registros YMM utilizando un acumulador que comienza en cero y al que se suma cada registro. La explicación se hizo con cuatro registros simultáneos para mayor claridad.
+La suma se realizó de forma empaquetada, así como la división por 4. 
+En realidad, la implementación evita utilizar tantos registros YMM 
+utilizando un acumulador que comienza en cero y al que se suma cada 
+registro. La explicación se hizo con cuatro registros simultáneos 
+para mayor claridad. \\
+
+De igual forma pero con otra combinación lineal de los elementos 
+se realiza el cálculo del término independiente $TInd$. \\ 
+
+Similarmente se realiza la creación de la matriz $A$, con la complejidad
+adicional que implica que esta matriz tenga 5 filas, cada una representando
+a una matriz de $max_i \times max_j$ elementos. La idea para resolver esto
+es mantener la misma lógica del caso anterior: procesar cuatro elementos 
+de la fila 0 de $A$ paralelizadamente, pero antes de avanzar a los próximos
+cuatro elementos de la fila 0 se procesan los mismos elementos pero de la
+fila 1, 2, 3 y 4. A continuación se puede apreciar la versión en C de esta
+porción de código. \\
+
+\begin{lstlisting}[caption = {Sección de la versión en C de la creación de la matriz $A$}]
+for (i = 1; i < max_i - 1; i++) {
+	for (j = 1; j < max_j - 1; j++) {
+		int s = indice(i, j, max_j);
+		
+		double derivada_k_x = (k[indice(i+1, j, max_j)] - k[indice(i-1, j, max_j)]) / (2 * delta_x);
+		A[indice(0, s, max_i*max_j)] = - derivada_k_x / (2 * delta_x) + k[indice(i-1, j, max_j)] / (delta_x * delta_x);
+		A[indice(2, s, max_i*max_j)] = derivada_k_x / (2 * delta_x) + k[indice(i+1, j, max_j)] / (delta_x * delta_x);
+
+		double derivada_k_y = (k[indice(i, j+1, max_j)] - k[indice(i, j-1, max_j)]) / (2 * delta_y);
+		A[indice(1, s, max_i*max_j)] = - derivada_k_y / (2 * delta_y) + k[indice(i, j-1, max_j)] / (delta_y * delta_y);
+		A[indice(3, s, max_i*max_j)] = derivada_k_y / (2 * delta_y) + k[indice(i, j+1, max_j)] / (delta_y * delta_y);
+
+		A[indice(4, s, max_i*max_j)] = - 2 * k[s] / (delta_x * delta_x) - 2 * k[s] / (delta_y * delta_y) + indep_term;
+	}
+}
+\end{lstlisting}
+
+Finalmente, explicaremos cómo se realiza el cálculo de cada paso del
+Jacobi. Veamos la estructura general de la sección a paralelizar:
+
+\begin{lstlisting}[caption = {Sección de la versión en C del cálculo de un paso de Jacobi}]
+for (i = 1; i < max_i - 1; i++) {
+	for (j = 1; j < max_j - 1; j++) {
+		int s = indice(i, j, max_j);
+		double sum = 0.0;
+		sum += A[indice(0, s, max_i*max_j)] * Tn[indice(i-1, j, max_j)];
+		sum += A[indice(1, s, max_i*max_j)] * Tn[indice(i, j-1, max_j)];
+		sum += A[indice(2, s, max_i*max_j)] * Tn[indice(i+1, j, max_j)];
+		sum += A[indice(3, s, max_i*max_j)] * Tn[indice(i, j+1, max_j)];
+		Tn_sig[s] = (B[s] - sum) / A[indice(4, s, max_i*max_j)];
+	}
+}
+\end{lstlisting}
+
+En concordancia con lo ya descrito, se levantan en memoria cuatro elementos
+de la fila 0 de $A$ junto con los cuatro vecinos izquierdos y se multiplican
+paralelizadamente. Luego, se suman a un acumulador (\texttt{sum}) también
+paralelizadamente. Esto mismo se realiza para las filas 1, 2 y 3, cada vez
+acumulando el resultado. Finalmente, se levantan 4 posiciones de $B$ de memoria
+y se realiza la operación correspondiente con los 4 elementos de la fila 4 de $A$:
+con esto habremos calculado 4 elementos de \texttt{T\_sig}.\\
 
 %%% SE HACEN ASI
-
-A continuación explicaremos la paralelización del próximo paso de Jacobi. 
-
-Aprovechando la representación de $A$ como una matriz de 5 filas donde cada una de ellas guarda uno de los 5 vecinos para todas las casillas, en un acceso a memoria se levantarán los valores correspondientes a cuatro casillas. \\
-
-mascara = 
-YMM0 = []
-YMM1 = []
 
 También paralelizamos más cálculos que no son de la forma anteriormente mencionada y explicada. Los mismos se incluyeron en el trabajo:
 
