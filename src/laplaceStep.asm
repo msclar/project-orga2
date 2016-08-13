@@ -2,7 +2,7 @@
 
 section .data
     format: db "num: %d", 10, 0
-    mask4: DQ 4.0, 4.0, 4.0, 4.0
+    mask4: DQ 0.25, 0.25, 0.25, 0.25
 
 section .text
 	global laplaceStep
@@ -61,7 +61,7 @@ laplaceStep:
 		add sPhi, 8
 		vaddpd ymm1, [phi + sPhi]
 				
-		vdivpd ymm1, [mask4]
+		vmulpd ymm1, [mask4]
 		vmovupd [res + s], ymm1
 				
 		add s, 32 ; me muevo 4 doubles para la derecha
