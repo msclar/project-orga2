@@ -53,7 +53,7 @@ updateB:
 		
 		vmovupd ymm2, [Tn + i]
 		vmulpd ymm2, mask_rho_times_C_rho
-		vdivpd ymm2, mask_delta_t
+		vmulpd ymm2, mask_delta_t ; multiplico por 1/delta_t (o sea, divido por delta_t)
 		vsubpd ymm2, [TIndAct + i] ; ymm2 = Tn * (- rho * C_rho) / delta_t - TIndAct
 		vmovupd [B + i], ymm2
 		

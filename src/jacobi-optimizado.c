@@ -298,6 +298,22 @@ double calcVectorError(double A[],
  *   2
  */
 
+double calcularSiguienteJacobi (int i,
+                                int j,
+                                double A[],
+                                double Tn[],
+                                double B[],
+                                int max_i,
+                                int max_j)  {
+	int s = indice(i, j, max_j);
+	double sum = 0.0;
+	sum += A[indice(0, s, max_i * max_j)] * Tn[indice(i-1, j, max_j)];
+	sum += A[indice(2, s, max_i * max_j)] * Tn[indice(i+1, j, max_j)];
+	sum += A[indice(1, s, max_i * max_j)] * Tn[indice(i, j-1, max_j)];
+	sum += A[indice(3, s, max_i * max_j)] * Tn[indice(i, j+1, max_j)];
+	return (B[s] - sum) / A[indice(4, s, max_i * max_j)];
+}
+
 void jacobiStepOptimized(double* Tn_sig, 
 				double* Tn,
 				double* B,
@@ -323,13 +339,7 @@ void jacobiStepOptimized(double* Tn_sig,
 	int j;
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
-			int s = indice(i, j, max_j);
-			double sum = 0.0;
-			sum += A[indice(0, s, max_i*max_j)] * Tn[indice(i-1, j, max_j)];
-			sum += A[indice(2, s, max_i*max_j)] * Tn[indice(i+1, j, max_j)];
-			sum += A[indice(1, s, max_i*max_j)] * Tn[indice(i, j-1, max_j)];
-			sum += A[indice(3, s, max_i*max_j)] * Tn[indice(i, j+1, max_j)];
-			Tn_sig[s] = (B[s] - sum) / A[indice(4, s, max_i*max_j)];
+			Tn_sig[indice(i, j, max_j)] = calcularSiguienteJacobi(i, j, A, Tn, B, max_i, max_j);
 		}
 	}
 
@@ -576,7 +586,7 @@ int main (int argc, char** argv) {
 		#endif
 		
 		#ifdef ASM
-			updateB(B, Tn, TIndAct, (double) rho * C_rho, delta_t, max_i * max_j);
+			updateB(B, Tn, TIndAct, (double) rho * C_rho, 1.0 / delta_t, max_i * max_j);
 		#endif
 		
 		#ifndef ASM
