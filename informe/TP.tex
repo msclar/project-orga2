@@ -299,13 +299,15 @@ En nuestro trabajo, las posiciones de los electrodos serán parte del input del 
 \subsection{Planteo del sistema y resolución}
 
 Habiendo hallado todas las ecuaciones que relacionan $T_n$ con $T_{n+1}$, 
-podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = B$$, donde $B = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$ y 
+podemos escribir un sistema a resolver de la forma $$A \cdot T_{n+1} = B$$ donde 
+$B = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$ y 
 despejar $T_{n+1}$ utilizando Jacobi. Consideramos a $A$ como la matriz 
-cuadrada de lado $max_i \cdot max_j$ donde cada fila (y cada columna) corresponde a 
+cuadrada de lado $max_i \cdot max_j$ donde cada fila corresponde a 
 una posición $(i, j)$ de la discretización de modo que en la fila de la 
 posición $(i, j)$ tendremos los coeficientes de la ecuación correspondiente 
 a $T_n(i,j)$ para cada posición de la grilla. Notemos que luego de hallar $T_n$, 
-la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede aplicar Jacobi usualmente.\\
+la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede 
+aplicar Jacobi usualmente.\\
 
 Notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes 
 que podrían ser no nulos corresponden a las posiciones del punto en 
@@ -315,7 +317,7 @@ en la complejidad del código a paralelizar, pues ya no es una simple resolució
 de sistema de ecuaciones sino que hay que tener sumo cuidado en respetar
 los índices indicados como no nulos. \\
 
-Gráficamente, si $A$ fuera una matriz de $6x6$ los únicos lugares que pueden
+Gráficamente, si $A$ fuera una matriz de $6 \times 6$ los únicos lugares que pueden
 ser no nulos son los que se muestran en gris en la imagen. Para la fila 
 correspondiente a $(i,j)$, los únicos elementos no nulos pueden ser $(i, j-1)$, 
 $(i,j+1)$ (que se verán a la izquierda y a la derecha de $(i,j)$ respectivamente), 
@@ -380,7 +382,9 @@ condicionales se resolvieron esos puntos como si valiera la fórmula general
 y luego se sobreescribieron los valores por los nuevos.
 \end{itemize}
 
-A modo de resumen daremos un pseudocódigo del problema implementado en su totalidad. Luego recordaremos cómo son los métodos de Jacobi y Laplace, pues son el punto más importante de paralelización usando SIMD.
+A modo de resumen daremos un pseudocódigo del problema implementado en 
+su totalidad. Luego recordaremos cómo son los métodos de Jacobi y 
+Laplace, pues son el punto más importante de paralelización usando SIMD.\\
 
 \begin{algorithm}[H]
 Leer par\'ametros de entrada ($C_{\rho}$, $\rho$, $q'''$, $C_b$, $\rho_b$, $w_b$, $T_a$, $T_{aire}$, $max_i$, $max_j$, $\Delta_t$) \\
@@ -397,7 +401,11 @@ Crear la matriz $A$ \\
 \caption{Pseudocódigo del algoritmo general}
 \end{algorithm}
 
-Dado que tendrá relevancia posterior, recordemos cómo es el método iterativo de Jacobi para resolver el sistema de ecuaciones $A \cdot T_{n+1} = B$, siendo $T_{n+1}$ la matriz a despejar.
+\bigskip
+
+Dado que tendrá relevancia posterior, recordemos cómo es el método 
+iterativo de Jacobi para resolver el sistema de ecuaciones 
+$A \cdot T_{n+1} = B$, siendo $T_{n+1}$ la matriz a despejar.\\
 
 \begin{algorithm}[H]
 \KwIn{Dos matrices $A = (a_{ij})$, $B = (b_{ij})$; $x^{(0)}$ una aproximación inicial a la solución; $\epsilon > 0$ la cota para la convergencia}
@@ -414,7 +422,14 @@ $k \leftarrow 0$
 \caption{Pseudocódigo del método de Jacobi}
 \end{algorithm}
 
-El cálculo de la sumatoria se podrá paralelizar en SIMD para calcular cuatro elementos a la vez. Notar que la aproximación inicial $x^{(0)}$ es $T_n$ en el caso de nuestro problema, donde queremos calcular $T_{n+1}$. Si nos encontramos en la primera ejecución de Jacobi, la aproximación inicial será la temperatura arterial ($T_a$) para todas las casillas de la matriz $T_0$. \\
+\bigskip
+
+El cálculo de la sumatoria se podrá paralelizar en SIMD para calcular 
+cuatro elementos a la vez. Notar que la aproximación inicial $x^{(0)}$ 
+es $T_n$ en el caso de nuestro problema, donde queremos calcular $T_{n+1}$. 
+Si nos encontramos en la primera ejecución de Jacobi, la aproximación 
+inicial será la temperatura arterial ($T_a$) para todas las casillas 
+de la matriz $T_0$. \\
 
 \newpage
 
@@ -423,7 +438,8 @@ El cálculo de la sumatoria se podrá paralelizar en SIMD para calcular cuatro e
 \subsection{Optimizaciones previas a SIMD}
 
 Como vimos en \ref{matriz_a}, cada fila contiene a lo sumo 5 elementos no 
-nulos. Es un desperdicio tanto espacial como temporal guardar esos elementos en memoria y analizarlos.
+nulos. Es un desperdicio tanto espacial como temporal guardar estos elementos que ya sabemos
+que serán iguales a cero en memoria y procesarlos.
 Es por eso que decidimos representar a $A$ como una matriz de 5 filas y $max_i \times max_j$ columnas, 
 en la que cada fila guarda uno de los cinco elementos no nulos. Esto será muy útil a la hora de paralelizar
 el procesamiento con SIMD, como veremos más adelante. \\
@@ -454,9 +470,9 @@ pero sí se permite \texttt{[k + max\_j - 8]}. \\
 Primeramente, notemos que nuestra implementación trabaja con números de punto flotante de doble
 precisión, que son de 64 bits cada uno. Esta precisión fue requerida por el LSC, para el que no
 era suficiente utilizar precisión simple por la exactitud necesaria dado el contexto de utilización.
-Con esta restricción, los registros XMM sólo permitirían paralelizar el cómputo de dos elementos por vez,
-ya que tienen 128 bits. Es por eso que decidimos utilizar registros YMM a lo largo de todo el trabajo.
-Como los registros YMM tienen 256 bits, permiten el cálculo de 4 double-precision floating point numbers
+Con esta restricción, los registros \texttt{XMM} sólo permitirían paralelizar el cómputo de dos elementos por vez,
+ya que tienen 128 bits. Es por eso que decidimos utilizar registros \texttt{YMM} a lo largo de todo el trabajo.
+Como los registros \texttt{YMM} tienen 256 bits, permiten el cálculo de 4 double-precision floating point numbers
 a la vez (64 bits $\times$ 4 $=$ 256 bits).\\
 Notar que esto implica que a lo sumo podremos mejorar el tiempo de ejecución de nuestro programa en 4 veces
 con el cálculo paralelizado. Seguramente esta cota superior no llegue a cumplirse, pues no todo el programa
@@ -484,7 +500,12 @@ for (i = 1; i < max_i - 1; i++) {
 }
 \end{lstlisting}
 
-Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, $res_{i,j+2}$ y $res_{i,j+3}$. Para eso, Deberemos leer algunas casillas de $\phi$ y paralelizar el cálculo. Más precisamente, podríamos cargar cuatro casillas de $\phi$ en un registro YMM (pues la matriz es formada por números de punto flotante de doble precisión) y sumar empaquetadamente. Gráficamente:
+Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, 
+$res_{i,j+2}$ y $res_{i,j+3}$. Para eso, Deberemos leer algunas 
+casillas de $\phi$ y paralelizar el cálculo. Más precisamente, podríamos 
+cargar cuatro casillas de $\phi$ (\texttt{phi}) en un registro \texttt{YMM} (pues la matriz es 
+formada por números de punto flotante de doble precisión) y 
+sumar empaquetadamente. Gráficamente:
 
 \begin{table}[!htbp]
 \centering
@@ -498,6 +519,8 @@ Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, $res_{i,j+2}$ y
 \end{tabular}
 \caption{Representación de los registros que contienen cada casilla de la matriz $\phi$. En gris se ven los cinco vecinos originales de la casilla $(i,j)$}
 \end{table}
+
+\bigskip
 
 \begin{table}[!htbp]
 \begin{tabular}{rl}
@@ -517,7 +540,7 @@ Queremos procesar $res_{i,j}$ al mismo tiempo que $res_{i,j+1}$, $res_{i,j+2}$ y
 \end{table}
 
 La suma se realizó de forma empaquetada, así como la división por 4. 
-En realidad, la implementación evita utilizar tantos registros YMM 
+En realidad, la implementación evita utilizar tantos registros \texttt{YMM} 
 utilizando un acumulador que comienza en cero y al que se suma cada 
 registro. La explicación se hizo con cuatro registros simultáneos 
 para mayor claridad. \\
@@ -577,9 +600,8 @@ acumulando el resultado. Finalmente, se levantan 4 posiciones de $B$ de memoria
 y se realiza la operación correspondiente con los 4 elementos de la fila 4 de $A$:
 con esto habremos calculado 4 elementos de \texttt{T\_sig}.\\
 
-%%% SE HACEN ASI
-
-También paralelizamos más cálculos que no son de la forma anteriormente mencionada y explicada. Los mismos se incluyeron en el trabajo:
+También paralelizamos más cálculos que no son de la forma 
+anteriormente mencionada y explicada. Los mismos se incluyeron en el trabajo:
 
 \begin{itemize}
 \item Actualización de la matriz $B$ en cada paso del Jacobi (recordar que $B = -\frac{\rho \cdot C_\rho}{\Delta t} \cdot T_n - TInd$).
@@ -590,18 +612,108 @@ También paralelizamos más cálculos que no son de la forma anteriormente menci
 
 A propósito se excluyó de la paralelización la lectura del input pues depende 
 fuertemente de la función deseada por el usuario. Actualmente corremos el programa
-con las funciones como fueron pasadas por el LSC a modo de ejemplo, pero ellos utilizarán
-nuestro programa con diversas entradas. \\
+con las funciones como fueron pasadas por el LSC a modo de ejemplo, 
+pero ellos utilizarán nuestro programa con diversas entradas. \\
 
-En todos los casos mencionados se evitó tratar los bordes de las matrices como lugares especiales pues significaría agregar condicionales, que vimos en la materia que puede dar lugar a reducciones de performance. Se decidió procesarlos como cualquier otra casilla y luego sobreescribir esos valores por los valores correctos: en el caso de los bordes exteriores, la función \texttt{copiarbordes} en ASM hace el trabajo, y en el caso de los electrodos se sobreescriben los valores desde C (pues son sólo dos puntos, donde no se puede aprovechar para paralelizar). Como las matrices de dos dimensiones son representadas en ASM en una sola dimensión, ignorar el hecho de que nos encontramos en un borde hace que evitemos agregar condicionales y procesemos todas las casillas en un único ciclo.\\
+En todos los casos mencionados se evitó tratar los bordes de las 
+matrices como lugares especiales pues significaría agregar 
+condicionales, que vimos en la materia que puede dar lugar a 
+reducciones de performance. Se decidió procesarlos como cualquier 
+otra casilla y luego sobreescribir esos valores por los valores 
+correctos: en el caso de los bordes exteriores, la función 
+\texttt{copiarbordes} en ASM hace el trabajo, y en el caso de los 
+electrodos se sobreescriben los valores desde C (pues son sólo dos 
+puntos, donde no se puede aprovechar para paralelizar). Como las 
+matrices de dos dimensiones son representadas en ASM en una sola 
+dimensión, ignorar el hecho de que nos encontramos en un borde hace 
+que evitemos agregar condicionales y procesemos todas las casillas 
+en un único ciclo.\\
 
 \newpage
 \section{Experimentos}
 
-En esta sección compararemos la performance temporal de nuestro programa con y sin optimizaciones
-SIMD. Adicionalmente, lo compararemos con la versión sin ninguna optimización previa hecha en C,
-para demostrar que las optimizaciones previas también fueron de vital importancia: una implementación
-en ASM de esta idea hubiera sido inútil, pues el algoritmo inicial será mucho más lenta. \\
+En esta sección compararemos la performance temporal de nuestro 
+programa con y sin optimizaciones SIMD. Adicionalmente, lo compararemos 
+con la versión sin ninguna optimización previa hecha en C,
+para demostrar que las optimizaciones previas también fueron de 
+vital importancia: una implementación en ASM de esta idea hubiera 
+sido inútil, pues el algoritmo inicial será mucho más lenta. \\
+
+Los experimentos fueron corridos tres veces cada uno para minimizar las
+posibles singularidades de una corrida sola, y lo que se grafica es el
+promedio de las tres.\\
+
+Ambas versiones del programa fueron compiladas con -O2, pero más detalles
+sobre cómo compilamos y tomamos las mediciones pueden ser encontrados en la
+sección ``Compilación''.
+
+\subsection{Compilación}
+
+El archivo principal es \texttt{jacobi-optimizado.c}, que puede recibir
+5 parámetros o ninguno (de no recibir ninguno, se utilizan algunos valores
+por defecto que utilizamos a la hora de contrastar nuestros resultados
+con el LSC). Los 5 parámetros son los siguientes, en este orden:
+
+\begin{itemize}
+\item \texttt{max\_i}: cantidad de filas en las que se discretiza el campo
+a analizar
+\item \texttt{max\_j}: cantidad de columnas en las que se discretiza el campo
+a analizar
+\item \texttt{delta\_t}: diferencia entre dos tiempos a analizar. Por ejemplo,
+si \texttt{delta\_t = 0.5} significa que hay dos
+tiempos a analizar por segundo.
+\item \texttt{max\_cant\_delta\_t}: cantidad de tiempos a analizar.
+Notar que no es la cantidad de segundos a analizar, pues depende 
+de \texttt{delta\_t}.
+\item \texttt{cant\_prints}: cantidad de impresiones parciales a 
+realizarse (siempre se realiza la impresión del último tiempo 
+analizado). Esto es útil para analizar la progresión a través del 
+tiempo y luego graficarlo en un $.gif$ como comentaremos en la 
+próxima sección.
+\end{itemize}
+
+
+\texttt{jacobi-optimizado.c} tiene algunos
+flags con el que puede ser compilado, y dependiendo de ellos será la
+versión del programa que se correrá. \\
+
+Las opciones de compilación son:
+
+\begin{itemize}
+\item \texttt{-DASM}: si se utiliza este flag, se tomarán las versiones
+en Assembler de las funciones que han sido paralelizadas - utilizar este
+flag reduce significativamente el tiempo de ejecución.
+\item \texttt{-DMEASURE\_TIME}: si se utiliza este flag se medirá el tiempo
+de ejecución de cada porción de código relevante. Según si se haya utilizado
+\texttt{-DASM} o no, se contabilizará el tiempo total que demora cada función en C
+o en ASM (se suman todas las llamadas). Además se mide el tiempo total
+de ejecución del algoritmo. Con este flag se impide cualquier tipo de
+escritura a archivo para no empeorar y distorsionar el tiempo de ejecución
+medido.
+\end{itemize}
+
+Adjuntamos el \texttt{Makefile} utilizado para compilar la versión que
+utiliza las funciones efectuadas en ASM. El programa en C plano sin
+optimizaciones en assembler fue compilado con el siguiente comando:
+
+\begin{center}
+\begin{verbatim}
+gcc -Wall -O2 -o "jacobi-optimizado" "jacobi-optimizado.c" -lm
+\end{verbatim}
+\end{center}
+
+\subsection{Visualización de los resultados}
+
+Como comentamos, este trabajo tuvo fuerte interacción con el LSC que
+comprobó cualitativamente nuestros resultados. Para ello es que creamos
+un graficador que tome en cuenta la dimensión temporal del problema: 
+cada instante de tiempo tiene como resultado un gráfico 3D, y hacer un
+gráfico 4D no era viable para poder interpretarlo. Es por eso que
+creamos el script \texttt{gen\_gif.sh} que genera un $.gif$ mostrando
+la evolución temporal de los resultados. Junto a este trabajo incluimos 
+$.gif$ ya generados pues la obtención de datos, el gráfico de cada uno de
+ellos y la posterior unión de todos los resultados es un proceso que 
+insume mucho tiempo.
 
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
@@ -653,9 +765,15 @@ T_{n+1}(i,j) & \approx \frac{r}{4 \cdot (r-1)} \cdot \big(T_{n+1}(i+1,j) + T_{n+
 \newpage
 \section{Apéndice B: cálculo del potencial eléctrico}
 
-El potencial eléctrico es un campo escalar definido como la solución de la ecuación de Laplace ($\delta \varphi = 0$) dados dos puntos fijos (ánodo y ćatodo) y condición de borde de flujo cero.\\
-La discretización de la ecuación $\delta \varphi = 0$ es conocida y corresponde a que una posición es el promedio de sus vecinos. Es decir, $$\varphi(i, j) = \frac{\varphi(i-1, j) + \varphi(i+1, j) + \varphi(i, j-1) + \varphi(i, j+1)}{4}$$
-Por otro lado, la condición de borde es la misma que en el caso de la ecuación de calor, por lo que las fórmulas de las discretizaciones en los puntos del borde son análogas y equivalen a:
+El potencial eléctrico es un campo escalar definido como la solución 
+de la ecuación de Laplace ($\delta \varphi = 0$) dados dos puntos 
+fijos (ánodo y ćatodo) y condición de borde de flujo cero.\\
+La discretización de la ecuación $\delta \varphi = 0$ es conocida y 
+corresponde a que una posición es el promedio de sus vecinos. 
+Es decir, $$\varphi(i, j) = \frac{\varphi(i-1, j) + \varphi(i+1, j) + \varphi(i, j-1) + \varphi(i, j+1)}{4}$$
+Por otro lado, la condición de borde es la misma que en el caso de 
+la ecuación de calor, por lo que las fórmulas de las discretizaciones 
+en los puntos del borde son análogas y equivalen a:
 \begin{equation*}
 \begin{aligned}
 \varphi(0,j) & = \varphi(1,j) \\ 

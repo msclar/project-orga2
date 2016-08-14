@@ -80,6 +80,10 @@ double normaVector(double matriz[], int cant_elems) {
 	return sqrt(result);
 }
 
+double promedioVecinos (int i, int j, double* phi, int max_j) {
+	return (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
+}
+
 void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 	
 	#ifdef MEASURE_TIME
@@ -95,7 +99,7 @@ void pasoLaplace(double* res, double* phi, int max_i, int max_j) {
 	// promedio los 4 vecinos (estos tienen los 4 vecinos)
 	for (i = 1; i < max_i - 1; i++) {
 		for (j = 1; j < max_j - 1; j++) {
-			res[indice(i , j, max_j)] = (phi[indice(i-1, j, max_j)] + phi[indice(i+1, j, max_j)] + phi[indice(i, j-1, max_j)] + phi[indice(i, j+1, max_j)]) / 4.0;
+			res[indice(i , j, max_j)] = promedioVecinos(i, j, phi, max_j);
 		}
 	}
 	// bordes izquierdo y derecho
