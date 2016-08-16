@@ -715,6 +715,37 @@ $.gif$ ya generados pues la obtención de datos, el gráfico de cada uno de
 ellos y la posterior unión de todos los resultados es un proceso que 
 insume mucho tiempo.
 
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/CreateA.png}
+  \caption{Tiempo que demora la función de creación de la matriz A con y sin SIMD}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/FillWithConstant.png}
+  \caption{Tiempo que demora la función que llena una matriz con una constante con y sin SIMD}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/LaplaceError.png}
+  \caption{Tiempo que demora la función de error de convergencia de Laplace con y sin SIMD}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/LaplaceStep.png}
+  \caption{Tiempo que demora la función de cálculo de un paso de aproximación de Laplace con y sin SIMD}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/CalcTInd.png}
+  \caption{Tiempo que demora la función de cálculo de término independiente con y sin SIMD}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.55]{images/RatioSIMD.png}
+  \caption{Razón entre el tiempo que demora cada función con y sin SIMD}
+\end{figure}
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
 
