@@ -544,6 +544,7 @@ En realidad, la implementación evita utilizar tantos registros \texttt{YMM}
 utilizando un acumulador que comienza en cero y al que se suma cada 
 registro. La explicación se hizo con cuatro registros simultáneos 
 para mayor claridad. \\
+Para los bordes, luego de calcular los valores en el interior de la matriz, debemos copiar la fila adyacente en el caso de los bordes superior e inferior y la columna adyacente en los bordes derecho e izquierdo. Para esto, usamos las funciones SIMD para copiar de a cuatro casillas los bordes superior e inferior. Sin embargo, para los bordes derecho e izquierdo al no ser las casillas contiguas en memoria, simplemente las copiamos una por una.	
 
 De igual forma pero con otra combinación lineal de los elementos 
 se realiza el cálculo del término independiente $TInd$. \\ 
@@ -715,6 +716,28 @@ $.gif$ ya generados pues la obtención de datos, el gráfico de cada uno de
 ellos y la posterior unión de todos los resultados es un proceso que 
 insume mucho tiempo.
 
+\subsection{Comparación de tiempos con y sin SIMD}
+
+Em esta sección nos proponemos medir que tanto mejoran los tiempos de ejecución gracias a las optimizaciones hechas usando assembler y más precisamente usando registros SIMD.\\
+Para esto, no sólo medimos el tiempo total de ejecución sino que haremos un análisis más profundo, midiendo además cada función que hemos optimizado y observando cual es la ganancia para cada una de ellas.\\
+Al mirar cada función, notamos quese dividen en dos clases, las que dependen del número de iteraciones del método y las que no, es decir, las que se ejecutan una sóla vez antes de iniciar el método y dependen sólo del tamaño de la matriz.\\
+Decidimos separar los análisis ya que dependiendo de la cantidad de iteraciones, las funciones que dominan el tiempo total de la corrida varía, pesando más las que no dependen de las iteraciones cuando hay pocas y pesando menos (y por lo tanto más las otras) cuando hay muchas.\\
+Para todas las funciones medimos el tiempo total de ejecución en todas las llamadas que se hacen a ellas durante una ejecución del código. Por lo que es esperable observar un tiempo mayor en las que se ejecutan múltiples veces durante una corrida.
+
+\subsubsection{Funciones independientes de la cantidad de iteraciones}
+
+Estas funciones son:
+\begin{itemize}
+\item Creación de la matriz A.
+\item Llenar una matriz con una constante.
+\item Calcular el error de converencia de Laplace.
+\item Calcular un paso de aproximación de la solución de Laplace.
+\item Cálculo del término independiente del sistema a resolver.
+\end{itemize}
+A continuación presentamos los tiempos de ejecución de cada función con y sim SIMD. Para todas ellas se ejcutó el código con $max_i = max_j$ (matriz de discretización cuadrada) y variando $max_i$ (su lado) entre $10$ y $290$ con diferencia de $40$ entre cada tamaño.
+
+\textbf{FALTAN LOS NUMEROS DEL EJE X!!!}
+
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.7]{images/CreateA.png}
@@ -741,11 +764,17 @@ insume mucho tiempo.
   \caption{Tiempo que demora la función de cálculo de término independiente con y sin SIMD}
 \end{figure}
 
+Observamos que en casi todas se obtienen mucho mejores tiempos con optimizaciones SIMD que sin ellas. La única en la que no se observa una gaancia apreciable es en la de llenar con una constante. Notar que igualmente es la que demora considerablemente menos tiempo, por lo que no influye demasiado en el tiempo total si nos enfocamos en optimizarla mejor.\\
+Por otro lado, como era de esperar, la función que más tiempo demora es la 	que ejecuta los pasos del método de aproximación a la solución de Laplace. Seguida (aunque con un orden de magnitud de tiempo menor) por el cálculo del error de convergencia. Esto tiene sentido ya que son las dos funciones que se ejecutan varias veces en toda la corrida (una vez por cada paso de aproximación). El tiempo de las otras funciones es despreciable con respecto a estas.\\
+Además, notemos que estas dos funciones son en las que se observa mayor ganancia usando SIMD. Para visualizar esto mejor mostramos el siguiente gráfico que mide la proporción entre el tiempo sin SIMD y con SIMD:
+
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.55]{images/RatioSIMD.png}
   \caption{Razón entre el tiempo que demora cada función con y sin SIMD}
 \end{figure}
+Como dijimos anteriormente, en la función paso Laplace logramos observar una ganancia de $3.8$ veces gracias a las optimizaciones SIMD, mientras que en la del error de Laplace observamos ganancias de $2.1$ veces.\\
+Concluimos que para esta clase de funciones, las optimizaciones loran grandes ganancias y las mejores de ellas se encuentran en el cuello de botella del algoritmo.
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
 
