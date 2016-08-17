@@ -724,6 +724,7 @@ Al mirar cada función, notamos quese dividen en dos clases, las que dependen de
 Decidimos separar los análisis ya que dependiendo de la cantidad de iteraciones, las funciones que dominan el tiempo total de la corrida varía, pesando más las que no dependen de las iteraciones cuando hay pocas y pesando menos (y por lo tanto más las otras) cuando hay muchas.\\
 Para todas las funciones medimos el tiempo total de ejecución en todas las llamadas que se hacen a ellas durante una ejecución del código. Por lo que es esperable observar un tiempo mayor en las que se ejecutan múltiples veces durante una corrida.
 
+\newpage
 \subsubsection{Funciones independientes de la cantidad de iteraciones}
 
 Estas funciones son:
@@ -734,47 +735,181 @@ Estas funciones son:
 \item Calcular un paso de aproximación de la solución de Laplace.
 \item Cálculo del término independiente del sistema a resolver.
 \end{itemize}
-A continuación presentamos los tiempos de ejecución de cada función con y sim SIMD. Para todas ellas se ejcutó el código con $max_i = max_j$ (matriz de discretización cuadrada) y variando $max_i$ (su lado) entre $10$ y $290$ con diferencia de $40$ entre cada tamaño.
-
-\textbf{FALTAN LOS NUMEROS DEL EJE X!!!}
+De la figura \ref{fig:CreateA} a la \ref{fig:CalcTInd} presentamos los tiempos de ejecución de cada función con y sim SIMD. Para todas ellas se ejcutó el código con $max_i = max_j$ (matriz de discretización cuadrada) y variando $max_i$ (su lado) entre $10$ y $290$ con diferencia de $40$ entre cada tamaño.
 
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.7]{images/CreateA.png}
   \caption{Tiempo que demora la función de creación de la matriz A con y sin SIMD}
+	\label{fig:CreateA}
 \end{figure}
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.7]{images/FillWithConstant.png}
   \caption{Tiempo que demora la función que llena una matriz con una constante con y sin SIMD}
+  \label{fig:FillWithConstant}
 \end{figure}
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.7]{images/LaplaceError.png}
   \caption{Tiempo que demora la función de error de convergencia de Laplace con y sin SIMD}
+  \label{fig:LaplaceError}
 \end{figure}
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.7]{images/LaplaceStep.png}
   \caption{Tiempo que demora la función de cálculo de un paso de aproximación de Laplace con y sin SIMD}
+  \label{fig:LaplaceStep}
 \end{figure}
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.7]{images/CalcTInd.png}
   \caption{Tiempo que demora la función de cálculo de término independiente con y sin SIMD}
+  \label{fig:CalcTInd}
 \end{figure}
 
 Observamos que en casi todas se obtienen mucho mejores tiempos con optimizaciones SIMD que sin ellas. La única en la que no se observa una gaancia apreciable es en la de llenar con una constante. Notar que igualmente es la que demora considerablemente menos tiempo, por lo que no influye demasiado en el tiempo total si nos enfocamos en optimizarla mejor.\\
 Por otro lado, como era de esperar, la función que más tiempo demora es la 	que ejecuta los pasos del método de aproximación a la solución de Laplace. Seguida (aunque con un orden de magnitud de tiempo menor) por el cálculo del error de convergencia. Esto tiene sentido ya que son las dos funciones que se ejecutan varias veces en toda la corrida (una vez por cada paso de aproximación). El tiempo de las otras funciones es despreciable con respecto a estas.\\
-Además, notemos que estas dos funciones son en las que se observa mayor ganancia usando SIMD. Para visualizar esto mejor mostramos el siguiente gráfico que mide la proporción entre el tiempo sin SIMD y con SIMD:
+Además, notemos que estas dos funciones son en las que se observa mayor ganancia usando SIMD. Para visualizar esto mejor mostramos el gráfico de la figura \ref{fig:RatioSIMD} que mide la proporción entre el tiempo sin SIMD y con SIMD:
 
 \begin{figure}[!htbp]
   \centering
 	\includegraphics[scale = 0.55]{images/RatioSIMD.png}
   \caption{Razón entre el tiempo que demora cada función con y sin SIMD}
+  \label{fig:RatioSIMD}
 \end{figure}
 Como dijimos anteriormente, en la función paso Laplace logramos observar una ganancia de $3.8$ veces gracias a las optimizaciones SIMD, mientras que en la del error de Laplace observamos ganancias de $2.1$ veces.\\
-Concluimos que para esta clase de funciones, las optimizaciones loran grandes ganancias y las mejores de ellas se encuentran en el cuello de botella del algoritmo.
+Concluimos que para esta clase de funciones, las optimizaciones loran grandes ganancias y las mejores de ellas se encuentran en el cuello de botella del algoritmo.\\
+Además observamos que la proporción de ganancia de cada función parece estabilizarse en un valor a medida que aumenta el tamaño de la matriz, como era de esperar.
+
+\newpage
+\subsubsection{Funciones que dependen de la cantidad de iteraciones}
+Estas funciones son las más importantes, ya que el código está pensado para ejecutarse con un gran número de iteraciones (si bien funciona para un número chico de ellas, el caso de uso más común será con bastantes iteraciones), por lo que esperamos que estas funciones son las que dominen el tiempo total de ejecución.\\
+Las funciones que dependen de las iteraciones son:
+\begin{itemize}
+	\item La función que calcula la nueva matriz $B$ luego de una iteración
+	\item La función que calcula la norma de un vector
+	\item La función que calcula el error de convergencia del método de Jacobi
+	\item La función que calcula un paso del método de Jacobi
+\end{itemize}
+Notar que en cada iteración se ejecuta una vez el método de Jacobi (que a su vez realiza muchas subiteraciones), por lo que la función que actualiza $B$ se ejecuta una sola vez, mientras que el resto se ejecuta una vez por cada subiteración. Igualmente, la convergencia de Jacobi es rápida y no se realizan muchas subiteraciones, a diferencia de lo que pasaba con el método de Laplace.\\
+De la figura \ref{fig:UpdateB} a la \ref{fig:JacobiStep} presentamos los gráficos de comparación entre ejecuciones con y sin SIMD para estas funciones fijando el número de iteraciones en $10.000$ y variando los tamaños de la discretización de igual manera que en los gráficos anteriores.
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/UpdateB.png}
+  \caption{Tiempo que demora la función que recalcula la matriz B con y sin SIMD}
+	\label{fig:UpdateB}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/NormVector.png}
+  \caption{Tiempo que demora la función que calcula la norma de un vector con y sin SIMD}
+  \label{fig:NormVector}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/JacobiError.png}
+  \caption{Tiempo que demora la función de error de convergencia de Jacobi con y sin SIMD}
+  \label{fig:JacobiError}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/JacobiStep.png}
+  \caption{Tiempo que demora la función de cálculo de un paso de aproximación de Jacobi con y sin SIMD}
+  \label{fig:JacobiStep}
+\end{figure}
+
+Para esta clase de funciones, si bien la función que más tiempo demora en sus ejecuciones es la que calcula un paso del método de Jacobi como se eperaba, no domina claramente a todas las otras. La función de error de Jacobi tarda sólo la mitad y la de actualizar B tarda la octava parte.\\
+Además, para esta cantidad de iteraciones, actualizar B tarda un tiempo similar al que tarda un paso de Laplace, por lo que si bien el tiempo que demora esta clase de funciones es mayor, no se vuelve completamente despreciable el tiempo de la otra clase de funciones.\\
+\bigskip
+
+Para finalizar los casos de análisis, en la figura \ref{fig:All} comparamos el tiempo total del algoritmo con y sin SIMD.
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/All.png}
+  \caption{Tiempo que demora todo el algoritmo con y sin SIMD}
+  \label{fig:All}
+\end{figure}
+Se observa una clara ganancia de tiempo al usar optimizaciones con operaciones SIMD.\\
+\bigskip
+
+Para visualizar mejor la ganancia, en la figura \ref{fig:RatioSIMD2} presentamos un gráfico de proporción de tiempo que demora entre la versión sin y con SIMD. Lo hacemos tanto como las funciones de esta clase como para el tiempo total del algoritmo.
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.55]{images/RatioSIMD2.png}
+  \caption{Razón entre el tiempo que demora cada función con y sin SIMD}
+	\label{fig:RatioSIMD2}
+\end{figure}
+
+Notamos que las funciones que más demoran (error y paso de Jacobi) son tambien las que tienen mayor proporción de ganancia, aunque en este caso la de error tiene mejor proporción que la de un paso de Jacobi, a pesar de que la segunda es mas costosa en total.\\
+Vemos que gracias a esto la proporción entre el tiempo total del algoritmo con y sin SIMD se parece a la ganancia de la función más costosa e incluso es un poco mejor gracias a la mejor proporción del calculo del error de Jacobi.\\
+Observamos una ganancia en el tiempo total del algoritmo de $3.2$ veces gracias a usar las optimizaciones SIMD. Lo consideramos bastante bueno, ya que el máximo teórico era de $4$ ya que optimizamos las operaciones para que se hagan de a cuatro casillas a la vez.\\
+
+\bigskip
+Ahora veremos como afecta al tiempo de estas funciones y al tiempo total del algoritmo variar la cantidad de iteraciones. Para esto fijamos el tamaño de la matriz en $130 \times 130$ y variamos el número de iteraciones entre $10$ y $14010$ con paso de $1000$ iteraciones.\\
+De la figura \ref{fig:UpdateBIter} a la \ref{fig:JacobiStepIter} se pueden ver los resultados obtenidos.
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/UpdateBIter.png}
+  \caption{Tiempo que demora la función que recalcula la matriz B con y sin SIMD}
+  \label{fig:UpdateBIter}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/NormVectorIter.png}
+  \caption{Tiempo que demora la función que calcula la norma de un vector con y sin SIMD}
+  \label{fig:NormVectorIter}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/JacobiErrorIter.png}
+  \caption{Tiempo que demora la función de error de convergencia de Jacobi con y sin SIMD}
+  \label{fig:JacobiErrorIter}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.7]{images/JacobiStepIter.png}
+  \caption{Tiempo que demora la función de cálculo de un paso de aproximación de Jacobi con y sin SIMD}
+  \label{fig:JacobiStepIter}
+\end{figure}
+
+Notamos que en todos los casos, ambos tiempos crecen linealmente al aumentar la cantidad de operaciones. Además, la proporción de ganancia entre usar SIMD y no usarlo se mantiene casi constante al variar la cantidad de iteraciones, por lo que concluímos que la cantidad de iteraciones no influye en la ganancia (en proporción) de las optimizaciones SIMD.\\
+Para visualizarlo mejor, en la figura \ref{fig:RatioSIMD2Iter} presentamos un gráfico con las proporciones de tiempo entre ambas versiones para cada función.
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.55]{images/RatioSIMD2Iter.png}
+  \caption{Razón entre el tiempo que demora cada función con y sin SIMD}
+  \label{fig:RatioSIMD2Iter}
+\end{figure}
+\newpage
+
+\subsubsection{Tiempo total del algoritmo}
+En esta sección vamos a analizar el tiempo total del algoritmo, con y sin SIMD, variando tanto el tamaño de la matriz como la cantidad de iteraciones.\\
+Variamos el tamaño de la matriz entre $10 \times 10$ y $290 \times 290$ con paso de $40$, de manera similar a los casos anteriores. Además, variamos la cantidad de iteraciones entre $1$ y $10000$ multiplicando por $10$ cada vez la cantidad de iteraciones. Vemos los resultados en la figura \ref{fig:TimesAll}.
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.5]{images/TimesAll.png}
+  \caption{Tiempo que tarda en total el algoritmo con y sin SIMD}
+  \label{fig:TimesAll}
+\end{figure}
+
+Como vemos, hay una gran diferencia entre el tiempo que tarda con $10.000$ iteraciones con respecto al resto, lo que vuelve al resto despreciable. Sin embargo, notamos que en el caso de tiempos con SIMD, el caso de $10.000$ iteraciones se parece mucho más al de $1.000$ sin SIMD que al de $10.000$ sin SIMD. Para apreciar mejor que pasa en los casos con pocas iteraciones presentamos un gráfico en la figura \ref{fig:RatioAll} mostrando la proporción entre el tiempo que tarda con optimizaciones y sin ellas.
+
+\begin{figure}[!htbp]
+  \centering
+	\includegraphics[scale = 0.5]{images/RatioAll.png}
+  \caption{Tiempo que tarda en total el algoritmo con y sin SIMD}
+	\label{fig:RatioAll}
+\end{figure}
+
+Vemos nuevamente que la cantidad de iteraciones del algoritmo casi no influye en la proporción de ganancia por las optimizaciones (aunque hay una ligera pérdida). Además vemos que en todos los casos las ganancia a medida que aumenta el tamaño de la matriz parece estabilizarse entre $3.2$ y $3.5$ veces al usar SIMD y además se alcanza esta proporción rápido (ya con matrices de $50 \times 50$).\\
+Concluímos que la ganancia por las optimizaciones es buena independientemente de la cantidad de operaciones y para matrices no demasiado pequeñas.
+
 \newpage
 \section{Apéndice A: cálculo de temperatura en los electrodos}
 
