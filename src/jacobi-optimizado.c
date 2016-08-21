@@ -184,7 +184,7 @@ void obtenerLaplace(double* res,
 	res[poscatodo] = catodov;
 	
 	double *aux = malloc(max_i * max_j * sizeof(double));
-	while (calcErrorLaplace(aux, res, max_i, max_j) > EPS) {
+	do {
 		pasoLaplace((double*) aux, res, max_i, max_j);
 		aux[posanodo] = anodov;
 		aux[poscatodo] = catodov;
@@ -192,7 +192,7 @@ void obtenerLaplace(double* res,
 		pasoLaplace(res, (double*) aux, max_i, max_j);
 		res[posanodo] = anodov;
 		res[poscatodo] = catodov;
-	}
+	} while (calcErrorLaplace(aux, res, max_i, max_j) > EPS);
 	free(aux);
 	return;
 }

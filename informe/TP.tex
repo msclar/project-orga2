@@ -156,7 +156,7 @@ de la ecuación de Pennes). Una explicación detallada de su cálculo se podrá 
 
 Como la resolución de estas ecuaciones ocupa una parte no despreciable 
 del cómputo de sus algoritmos completos, lo implementamos en C plano y en ASM con SIMD y 
-compararemos los tiempos de ejecución obtenidos con cada una (compilando con gcc e icc). Creemos que 
+compararemos los tiempos de ejecución obtenidos con cada una (compilando con gcc). Creemos que 
 utilizar SIMD podría ser muy provechoso en este problema, ya que muchas 
 de las operaciones de matrices que efectuaremos son paralelizables y 
 esperamos ver una significante reducción en el tiempo de ejecución del 
@@ -165,8 +165,8 @@ resolución: el programa resultante es más complejo pero esto hace que se reduz
 temporal del programa en varios órdenes.\\
 
 Como todos los cálculos son con números de punto flotante con doble 
-precisión, utilizaremos los registros YMM (cuya longitud es el doble que la de los
-registros XMM vistos en la materia) para poder paralelizar el cálculo de 4 números en vez de sólo 2.\\
+precisión, utilizaremos los registros \texttt{YMM} (cuya longitud es el doble que la de los
+registros \texttt{XMM} vistos en la materia) para poder paralelizar el cálculo de 4 números en vez de sólo 2.\\
 
 Cabe destacar que el LSC no tenía implementación alguna de esto que vamos
 a resolver, por lo que parte del alcance del trabajo fue dar un programa
@@ -366,7 +366,7 @@ en el gráfico se verán $max_j = 6$ lugares para la izquierda o para la derecha
  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline 
  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & \\ \hline
 \end{tabular}
-\caption{Representación de $A$ para una matriz de $6\times6$. En gris se ven las casillas donde es posible que haya un elemento no nulo. Esta representación ignora los bordes (están en blanco): notar que las filas del medio que discontinúan el patrón diagonal corresponden a los bordes verticales ($(i,0)$ o $(i,max_j)$ $\forall i$) y las del principio y final corresponden a ($(0,j)$ o $(max_i,j)$ $\forall j$). }
+\caption{Representación de $A$ para una matriz de $6\times6$. \\ En gris se ven las casillas donde es posible que haya un elemento no nulo. Esta representación ignora los bordes (están en blanco): notar que las filas del medio que discontinúan el patrón diagonal corresponden a los bordes verticales ($(i,0)$ o $(i,max_j)$ $\forall i$) y las del principio y final corresponden a ($(0,j)$ o $(max_i,j)$ $\forall j$). }
 \label{table:matriz_a}
 \end{table}
 
@@ -409,7 +409,7 @@ iterativo de Jacobi para resolver el sistema de ecuaciones
 $A \cdot T_{n+1} = B$, siendo $T_{n+1}$ la matriz a despejar.\\
 
 \begin{algorithm}[H]
-\KwIn{Dos matrices $A = (a_{ij})$, $B = (b_{ij})$; $x^{(0)}$ una aproximación inicial a la solución; $\epsilon > 0$ la cota para la convergencia}
+\KwIn{Dos matrices $A = (a_{ij})$, $B = (b_{ij})$; $x^{(0)}$ una aproximación inicial a la solución; $\epsilon > 0$ la cota de la convergencia}
 \KwOut{Una matriz $X$ tal que $||A \cdot X - B|| < \epsilon$}
 
 $k \leftarrow 0$
@@ -431,6 +431,50 @@ es $T_n$ en el caso de nuestro problema, donde queremos calcular $T_{n+1}$.
 Si nos encontramos en la primera ejecución de Jacobi, la aproximación 
 inicial será la temperatura arterial ($T_a$) para todas las casillas 
 de la matriz $T_0$. \\
+
+\SetKwRepeat{Do}{do}{while}
+\begin{algorithm}[H]
+\KwIn{$posicion\_anodo$, $posicion\_catodo$, $voltaje\_anodo$, $voltaje\_catodo$, $max_i$, $max_j$, $\epsilon > 0$ la cota de la convergencia}
+\KwOut{Una matriz $res$ que representa a la función $\phi$ en todos los puntos de la discretización}
+\DontPrintSemicolon
+	\;
+	$res \leftarrow \Big \{\frac{voltaje\_anodo + voltaje\_catodo}{2}, ... , \frac{voltaje\_anodo + voltaje\_catodo}{2} \Big \}$ \\
+	$aux$ es una matriz auxiliar: contiene junto con $res$ los últimos dos pasos de la aproximación a $\phi$ \\
+
+	\Do{$||res - aux|| \geq \epsilon$} {
+		Realizo un paso del Laplace, guardando en $aux$ lo calculado a partir de $res$ \\
+		$aux_{posicion\_anodo} \leftarrow voltaje\_anodo$ \\
+		$aux_{posicion\_catodo} \leftarrow voltaje\_catodo$ \\
+		\;
+		Realizo un paso del Laplace, guardando en $res$ lo calculado a partir de $aux$ \\
+		$res_{posicion\_anodo} \leftarrow voltaje\_anodo$ \\
+		$res_{posicion\_catodo} \leftarrow voltaje\_catodo$ \\	
+	}
+
+\caption{Pseudocódigo del método para resolver la ecuación del calor de Laplace}
+\end{algorithm}
+
+\bigskip
+En el algoritmo de la ecuación de Laplace siempre se vuelven a asignar 
+los voltajes originales en las posiciones de 
+los electodos pues el voltaje en esas posiciones es constante (durante todo el tratamiento
+siguen activos los electrodos). \\
+
+\begin{algorithm}[H]
+\KwIn{$phi$, $max_i$, $max_j$}
+\KwOut{Una matriz $res$ que representa un paso más en la aproximación a la función $\phi$ en todos los puntos de la discretización}
+\DontPrintSemicolon
+\;
+	\ForAll{posiciones $p$ en la matriz $\phi$ que no están en los bordes exteriores} {
+		Se promedian los cuatro vecinos de $p$ y se guardan en $res$
+	}
+	
+	\ForAll{posiciones $p$ en la matriz $\phi$ en los bordes exteriores} {
+		Se asignan los valores del vecino más cercano cuyo valor en $res$ ya esté calculado (y se guarda en $res$)
+	}
+
+\caption{Pseudocódigo de un paso de Laplace}
+\end{algorithm}
 
 \newpage
 
@@ -578,7 +622,8 @@ for (i = 1; i < max_i - 1; i++) {
 \end{lstlisting}
 
 Finalmente, explicaremos cómo se realiza el cálculo de cada paso del
-Jacobi. Veamos la estructura general de la sección a paralelizar:
+Jacobi. Veamos la estructura general de la sección a paralelizar: \\
+\bigskip
 
 \begin{lstlisting}[caption = {Sección de la versión en C del cálculo de un paso de Jacobi}]
 for (i = 1; i < max_i - 1; i++) {
@@ -683,8 +728,8 @@ flag reduce significativamente el tiempo de ejecución.
 de ejecución de cada porción de código relevante. Según si se haya utilizado
 \texttt{-DASM} o no, se contabilizará el tiempo total que demora cada función en C
 o en ASM (se suman todas las llamadas). Además se mide el tiempo total
-de ejecución del algoritmo. Con este flag se impide cualquier tipo de
-escritura a archivo para no empeorar y distorsionar el tiempo de ejecución
+de ejecución del algoritmo. \textbf{Con este flag se impide cualquier tipo de
+escritura a archivo} para no empeorar y distorsionar el tiempo de ejecución
 medido.
 \end{itemize}
 
