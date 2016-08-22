@@ -476,7 +476,7 @@ int main (int argc, char** argv) {
 	double T_a = 310.15;
 	double T_aire = 296;
 
-	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;
+	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;  
 	
 	delta_x = 0.1 / max_i; delta_y = 0.1 / max_j; // recinto de 0.1cm x 0.1cm
 
@@ -578,11 +578,12 @@ int main (int argc, char** argv) {
 
 	// resolucion por Jacobi
 	int n; // n es la cantidad de delta_t corridos (el tiempo real es n * delta_t * 2)
+	int pulseGap = 0.2 / delta_t + 1;
 	for (n = 1; n <= max_cant_delta_t; n++) {
 		
 		// Para simular los pulsos electricos
 		double* TIndAct = TIndPhiZero;
-		if (n % 4000 < 40) 
+		if (n % pulseGap <= pulseGap / 100)
 			TIndAct = TInd;
 			
 		#ifdef MEASURE_TIME
