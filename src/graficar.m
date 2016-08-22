@@ -3,13 +3,20 @@
 function graficar()
     fnames = dir('output/*.out');
     numfids = length(fnames);
+    maximo = 0;
+    for K = 1:numfids
+        [X,delimiterOut]=importdata(sprintf('output/%s',fnames(K).name));
+		maximo = max(max(max(X)), maximo);
+    end
+    maximo = maximo + 10
+
     for K = 1:numfids
         [X,delimiterOut]=importdata(sprintf('output/%s',fnames(K).name));
         
         figure('visible', 'off');
         surf(X);
         view(-74,40);
-        zlim([305 400]);
+        zlim([305 maximo]);
         
         filename = str2num(fnames(K).name(2:end-4)) % esto usa que el archivo es T12434.out
         saveas(gca, sprintf('images/%d.png', filename));
