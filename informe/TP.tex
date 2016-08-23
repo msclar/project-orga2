@@ -310,6 +310,9 @@ a $T_n(i,j)$ para cada posición de la grilla. Notemos que luego de hallar $T_n$
 la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede 
 aplicar Jacobi usualmente.\\
 
+Un detalle a observar es que el tratamiento funciona emitiendo pulsos cortos de corriente entre los electrodos. Esto quiere decir que el campo eléctrico $\phi$ está activo sólo en los instantes de timepo en los que se este emitiendo un pulso y será nulo en los instantes que transcurren desde un pulso al siguiente. Esto se modela en el problema cambiando la $\phi$ por el valor obtenido de la solución de la ecuación de Laplace para cuando se emite el pulso y por la constante $0$ cuando no hay diferencia de potencial entre los electrodos.\\
+Notemos que el único lugar donde aparece la $\phi$ es en el término independiente. Por eso, calculamos dos términos independientes distintos, uno con la $\phi$ que es solución de Laplace y otra con una $\phi$ nula y luego elegimos según el tiempo a calcular el término independiente que corresponda dependiento de si los electrodos están activos en dicho tiempo.\\
+
 Notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes 
 que podrían ser no nulos corresponden a las posiciones del punto en 
 cuestión y sus vecinos. Con esto conseguiremos reducir mucho el tiempo 
@@ -393,6 +396,7 @@ Obtener el potencial el\'ectrico $\phi$ con el método de Laplace \\
 Crear la matriz $A$ \\
 
 \ForAll{tiempos $t$ en el intervalo $[0..max\_tiempo\_a\_analizar/2]$} {
+	Asignar el TInd adecuado para este tiempo (segun si hay un pulso activo o no)\\
 	Actualizar la matriz $B$ \\
 	\While{error del calculo $>$ epsilon} {
 		Realizo dos pasos del método de Jacobi
