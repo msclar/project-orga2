@@ -82,8 +82,7 @@ jacobiStep:
 		add s, 32 ; me muevo 4 doubles para la derecha
 
 		dec i
-		cmp i, 0
-		jne loop_i
+		jnz loop_i
 		
 	call copiarbordes
 	

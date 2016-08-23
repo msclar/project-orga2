@@ -67,8 +67,7 @@ laplaceStep:
 		add s, 32 ; me muevo 4 doubles para la derecha
 
 		dec i
-		cmp i, 0
-		jne loop_i
+		jnz loop_i
 
 	mov r9, max_j
 	call copiarbordes

@@ -1,0 +1,9 @@
+*** Explicaciones sobre los GIF ***
+
+En todos fijamos delta_t en 0.005, 10000 iteraciones y 50 impresiones.
+Lo generamos con 
+
+1) Matriz de 50x50,   catodo_x = 0.025 y anodo_x = 0.075, anodo_v = 1000
+2) Matriz de 200x200, catodo_x = 0.025 y anodo_x = 0.075, anodo_v = 1000
+3) Matriz de 200x200, catodo_x = 0.04  y anodo_x = 0.6,   anodo_v = 1000
+4) Matriz de 200x200, catodo_x = 0.025 y anodo_x = 0.075, anodo_v = 100
