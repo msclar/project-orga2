@@ -11,7 +11,7 @@
 \usepackage{graphicx} %Para incluir el logo de la UBA
 \usepackage{caratula} %Para armar el cuadro de integrantes
 \usepackage{multirow} %Para poder poner varias lineas juntas sin divisiones en una tabla
-\usepackage{algorithm2e}
+\usepackage[ruled,linesnumbered]{algorithm2e}
 \usepackage{algpseudocode}
 \usepackage{scrextend}
 \usepackage{blindtext}
@@ -134,9 +134,10 @@ de los proyectos del Laboratorio de Sistemas Complejos (DC-UBA), pues
 el LSC aplicará nuestro trabajo para agilizar el cálculo de una sección 
 de su modelo para identificar la temperatura y posición óptimas en las 
 que aplicar un tratamiento para reducir los tumores cancerígenos. A 
-grandes rasgos, los tratamientos ultilizados consiste en colocar dos electrodos (un 
+grandes rasgos, los tratamientos utilizados consisten en colocar dos electrodos (un 
 ánodo y un cátodo) en puntos específicos de la piel del paciente 
-cercanos al tumor y lograr la destrucción del tejido cancerígeno 
+cercanos al tumor, emitiendo pulsos cortos de corriente entre 
+ellos para lograr la destrucción del tejido cancerígeno 
 debido a cambios de pH, aumento de permeabilidad irreversible en la 
 membrana plasmática o aumento en la absorción del quimioterápico, 
 entre otros. Como efecto secundario del tratamiento se produce un 
@@ -310,10 +311,23 @@ a $T_n(i,j)$ para cada posición de la grilla. Notemos que luego de hallar $T_n$
 la única incógnita del sistema es en efecto $T_{n+1}$ y en efecto se puede 
 aplicar Jacobi usualmente.\\
 
-Un detalle a observar es que el tratamiento funciona emitiendo pulsos cortos de corriente entre los electrodos. Esto quiere decir que el campo eléctrico $\phi$ está activo sólo en los instantes de timepo en los que se este emitiendo un pulso y será nulo en los instantes que transcurren desde un pulso al siguiente. Esto se modela en el problema cambiando la $\phi$ por el valor obtenido de la solución de la ecuación de Laplace para cuando se emite el pulso y por la constante $0$ cuando no hay diferencia de potencial entre los electrodos.\\
-Notemos que el único lugar donde aparece la $\phi$ es en el término independiente. Por eso, calculamos dos términos independientes distintos, uno con la $\phi$ que es solución de Laplace y otra con una $\phi$ nula y luego elegimos según el tiempo a calcular el término independiente que corresponda dependiento de si los electrodos están activos en dicho tiempo.\\
+Un detalle a observar es que el tratamiento funciona emitiendo pulsos 
+cortos de corriente entre los electrodos. Esto quiere decir que el 
+campo eléctrico $\phi$ está activo solo en los instantes de tiempo en 
+los que se esté emitiendo un pulso y será nulo en los instantes que 
+transcurren desde un pulso al siguiente. Esto se modela en el problema 
+cambiando la $\phi$ por el valor obtenido de la solución de la ecuación 
+de Laplace para cuando se emite el pulso y por la constante $0$ cuando 
+no hay diferencia de potencial entre los electrodos.\\
 
-Notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes 
+Notemos que el único lugar donde aparece la $\phi$ es en el término 
+independiente $TInd$. Por eso, calculamos dos términos independientes 
+distintos, uno con la $\phi$ que es solución de Laplace y otra con 
+una $\phi$ nula y luego elegimos según el tiempo a calcular el término 
+independiente que corresponda dependiendo de si los electrodos están 
+activos en dicho tiempo o no. \\
+
+Además, notemos que la matriz $A$ es esparsa, pues en cada fila los coeficientes 
 que podrían ser no nulos corresponden a las posiciones del punto en 
 cuestión y sus vecinos. Con esto conseguiremos reducir mucho el tiempo 
 de cómputo en todas las implementaciones. Esto también implicó un crecimiento
@@ -322,13 +336,14 @@ de sistema de ecuaciones sino que hay que tener sumo cuidado en respetar
 los índices indicados como no nulos. \\
 
 Gráficamente, si $A$ fuera una matriz de $6 \times 6$ los únicos lugares que pueden
-ser no nulos son los que se muestran en gris en la imagen. Para la fila 
+ser no nulos son los que se muestran en gris en el cuadro \ref{table:matriz_a}. Para la fila 
 correspondiente a $(i,j)$, los únicos elementos no nulos pueden ser $(i, j-1)$, 
 $(i,j+1)$ (que se verán a la izquierda y a la derecha de $(i,j)$ respectivamente), 
 $(i-1, j)$ e $(i+1,j)$ (que al estar una fila arriba o abajo de $(i,j)$, 
 en el gráfico se verán $max_j = 6$ lugares para la izquierda o para la derecha de él). 
 
-\begin{table}[!htbp]
+\newpage
+\begin{table}
 \centering
 \begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
 \hline
@@ -391,18 +406,20 @@ su totalidad. Luego recordaremos cómo son los métodos de Jacobi y
 Laplace, pues son el punto más importante de paralelización usando SIMD.\\
 
 \begin{algorithm}[H]
+\SetAlgoLined
 Leer par\'ametros de entrada ($C_{\rho}$, $\rho$, $q'''$, $C_b$, $\rho_b$, $w_b$, $T_a$, $T_{aire}$, $max_i$, $max_j$, $\Delta_t$) \\
 Obtener el potencial el\'ectrico $\phi$ con el método de Laplace \\
 Crear la matriz $A$ \\
 
 \ForAll{tiempos $t$ en el intervalo $[0..max\_tiempo\_a\_analizar/2]$} {
-	Asignar el TInd adecuado para este tiempo (segun si hay un pulso activo o no)\\
+	Asignar el $TInd$ adecuado para este tiempo (según si hay un pulso activo o no)\\
 	Actualizar la matriz $B$ \\
 	\While{error del calculo $>$ epsilon} {
-		Realizo dos pasos del método de Jacobi
+		Realizo dos pasos del método de Jacobi (guardando los últimos dos $T_n$ obtenidos)
 		Actualizo el error
 	}
 }
+Devolver el último $T_n$ (opcionalmente se pueden devolver algunos resultados intermedios)
 \caption{Pseudocódigo del algoritmo general}
 \end{algorithm}
 
@@ -441,8 +458,7 @@ de la matriz $T_0$. \\
 \KwIn{$posicion\_anodo$, $posicion\_catodo$, $voltaje\_anodo$, $voltaje\_catodo$, $max_i$, $max_j$, $\epsilon > 0$ la cota de la convergencia}
 \KwOut{Una matriz $res$ que representa a la función $\phi$ en todos los puntos de la discretización}
 \DontPrintSemicolon
-	\;
-	$res \leftarrow \Big \{\frac{voltaje\_anodo + voltaje\_catodo}{2}, ... , \frac{voltaje\_anodo + voltaje\_catodo}{2} \Big \}$ \\
+	$res \leftarrow \Big \{\frac{voltaje\_anodo + voltaje\_catodo}{2}, $\ldots$ , \frac{voltaje\_anodo + voltaje\_catodo}{2} \Big \}$ \\
 	$aux$ es una matriz auxiliar: contiene junto con $res$ los últimos dos pasos de la aproximación a $\phi$ \\
 
 	\Do{$||res - aux|| \geq \epsilon$} {
@@ -468,7 +484,6 @@ siguen activos los electrodos). \\
 \KwIn{$phi$, $max_i$, $max_j$}
 \KwOut{Una matriz $res$ que representa un paso más en la aproximación a la función $\phi$ en todos los puntos de la discretización}
 \DontPrintSemicolon
-\;
 	\ForAll{posiciones $p$ en la matriz $\phi$ que no están en los bordes exteriores} {
 		Se promedian los cuatro vecinos de $p$ y se guardan en $res$
 	}
@@ -758,7 +773,24 @@ creamos el script \texttt{gen\_gif.sh} que genera un $.gif$ mostrando
 la evolución temporal de los resultados. Junto a este trabajo incluimos 
 $.gif$ ya generados pues la obtención de datos, el gráfico de cada uno de
 ellos y la posterior unión de todos los resultados es un proceso que 
-insume mucho tiempo.
+insume mucho tiempo. Estos cuatro $.gif$ se hallan en la carpeta \texttt{/gif}
+de este trabajo e intentan dar un pantallazo general a distintas instancias
+en la que el algoritmo puede ser llamado. En \texttt{/gif/gifs\_explained}
+se explican en detalle todos los parámetros de cada animación.
+
+\subsubsection{Qué hace \texttt{gen\_gif.sh} y cómo usarlo}
+Este script correrá el algoritmo general, imprimiendo resultados parciales
+de $T_n$ y guardándolos todos en la carpeta \texttt{/src/output}. Luego
+se crean los gráficos en Matlab, se guardan en \texttt{/src/images} y
+finalmente se unen todas las imágenes en un $.gif$. Es importante notar
+que entre dos corridas se limpian automáticamente las carpetas \texttt{/src/output} y
+\texttt{/src/images}.
+Se deberá utilizar un comando del siguiente formato para llamar al script:
+\begin{center}
+\begin{verbatim}
+bash gen_gif.sh max_i max_j delta_t max_cant_delta_t cant_prints nombre_gif
+\end{verbatim}
+\end{center}
 
 \subsection{Comparación de tiempos con y sin SIMD}
 
