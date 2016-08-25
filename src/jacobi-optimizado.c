@@ -534,8 +534,7 @@ int main (int argc, char** argv) {
 	#endif
 
 	obtenerLaplace(phi, anodo_x_idx, anodo_y_idx, anodo_v, catodo_x_idx, catodo_y_idx, catodo_v, max_i, max_j);
-	// calculo de TInd
-	
+
 	#ifdef MEASURE_TIME
 		STARTMEASURE(9);
 	
