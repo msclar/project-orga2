@@ -6,20 +6,12 @@
 
 long long tt[16];
 struct timespec startt[16], endt[16];
-int measure_type = -1;
 
-#define STARTMEASURE(x)\
-if (measure_type != x)\
-{\
-	clock_gettime(CLOCK_MONOTONIC,&(startt[x]));\
-}
+#define STARTMEASURE(x) clock_gettime(CLOCK_MONOTONIC,&(startt[x]));
 	
 #define ENDMEASURE(x)\
-if (measure_type != x)\
-{\
 	clock_gettime(CLOCK_MONOTONIC, &(endt[x]));\
-	tt[x] += endt[x].tv_sec*1000000000LL + endt[x].tv_nsec - startt[x].tv_sec*1000000000LL - startt[x].tv_nsec;\
-}
+	tt[x] += endt[x].tv_sec*1000000000LL + endt[x].tv_nsec - startt[x].tv_sec*1000000000LL - startt[x].tv_nsec;
 
 #ifdef ASM
 	extern void jacobiStep (double*, double*, double*, double*, int, int);
@@ -76,7 +68,6 @@ double normaVector(double matriz[], int cant_elems) {
 	for (i = 0; i < cant_elems; i++) {
 		result += matriz[i] * matriz[i];
 	}
-	// se puede evitar tomar raiz cuadrada si tomamos la convencion
 	return sqrt(result);
 }
 
@@ -476,7 +467,7 @@ int main (int argc, char** argv) {
 	double T_a = 310.15;
 	double T_aire = 296;
 
-	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;  
+	double catodo_x = 0.025, catodo_y = 0.05, anodo_x = 0.075, anodo_y = 0.05;
 	
 	delta_x = 0.1 / max_i; delta_y = 0.1 / max_j; // recinto de 0.1cm x 0.1cm
 
@@ -523,9 +514,7 @@ int main (int argc, char** argv) {
 	}
 
 	#ifdef MEASURE_TIME
-		//printf("Ingrese el tipo de medicion\n");
-		// scanf("%i", &measure_type);
-		// Ingreso el tipo de la medicion, los tipos posibles son los siguientes:
+		// Los tipos posibles de medicion son los siguientes:
 		/*
 		0 = TODO
 		1 = CREACION DE A
